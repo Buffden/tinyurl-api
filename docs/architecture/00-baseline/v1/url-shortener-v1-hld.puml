@@ -61,7 +61,7 @@ DB --> APP : Return \n original_url
 
 APP --> User : HTTP\n 301 / 302 \n Redirect
 
-User --> LB : POST /create
+User --> LB : POST /api/urls
 LB --> NGINX
 NGINX --> APP
 APP --> DB : INSERT short_code + original_url

@@ -1,5 +1,12 @@
 # URL Shortener — POC 1 (Requirements-First Design)
 
+> **Superseded** — This document is the original POC draft and is preserved for historical reference only.
+> The authoritative baseline is [url-shortener-v1.md](v1/url-shortener-v1.md).
+> Known divergences from frozen decisions: read/write ratio (80/20 here vs. 99:1), uptime target (99.99% here vs. 99.9%), and expired-link response (open here vs. HTTP 404 per ADR-004).
+> Do not update this file — update the v1/v2 documents instead.
+
+---
+
 > Focus: define *what must exist* before choosing *how to build it*.
 
 ---

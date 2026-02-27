@@ -118,7 +118,7 @@ Starting from v1 components, v2 requires additional components because of scale 
 
 ### Write Path (Create) — v2
 
-1. Client sends `POST /create` (or `/custom`) with URL and optional expiry.
+1. Client sends `POST /api/urls` (with optional `alias` field for custom aliases) with URL and optional expiry.
 2. Nginx applies rate limits and forwards to app.
 3. App validates input, checks alias rules, and generates `short_code` if needed.
 4. App writes mapping to primary DB (with soft delete fields defaulted).

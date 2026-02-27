@@ -76,8 +76,9 @@ APP --> REDIS : Cache \n populate (TTL)
 
 APP --> User : HTTP\n 301 / 302 \n Redirect
 
-User --> LB : POST /create
-LB --> APP
+User --> LB : POST /api/urls
+LB --> NGINX
+NGINX --> APP
 APP --> DB : INSERT mapping
 APP --> REDIS : Warm cache
 APP --> User : Return short URL

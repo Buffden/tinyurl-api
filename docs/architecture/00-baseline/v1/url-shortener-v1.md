@@ -107,7 +107,7 @@ At 5K QPS peak, horizontal scaling is expected at the application layer.
 
 ### Write Path (Create) — v1
 
-1. Client sends `POST /create` with original URL and optional expiry.
+1. Client sends `POST /api/urls` with original URL and optional expiry.
 2. Load balancer routes to an app instance via Nginx.
 3. App validates input and generates `short_code` (DB-backed sequence + Base62).
 4. App writes mapping to the primary DB.
