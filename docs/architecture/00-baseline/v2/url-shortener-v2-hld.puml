@@ -33,8 +33,8 @@ package "AWS Region (Single Region)" #LightBlue {
     }
 
     package "Application Tier" #LightYellow {
-        [Nginx\n(TLS + Rate Limiting)] as NGINX
-        [URL Shortener App\n(Stateless Instances)] as APP
+        [Nginx\n(TLS Termination + Reverse Proxy)] as NGINX
+        [URL Shortener App\n(Stateless Instances + Token Bucket RL)] as APP
     }
 
     package "Cache Layer" #LightPink {
@@ -61,29 +61,26 @@ DATA_GAP -[hidden]-> DB
 ' ---------------- FLOW ----------------
 
 User --> DNS : Resolve \n domain
-User --> LB : HTTPS \n Request
+User --> LB : HTTPS Request\n(GET /{code} or POST /shorten)
 
 LB --> NGINX
 NGINX --> APP
 
 APP --> REDIS : Lookup \n short_code
-REDIS --> APP : Cache hit
+REDIS --> APP : Cache hit\nor NULL (negative cache)
 
 APP --> DB : Cache miss \n lookup
 DB --> APP : Return \n mapping
 
-APP --> REDIS : Cache \n populate (TTL)
+APP --> REDIS : Cache populate (TTL)\nor Store NULL (TTL)
 
-APP --> User : HTTP\n 301 / 302 \n Redirect
+APP --> User : HTTP 301/302 Redirect\nor HTTP 404 Not Found\nor Return short URL
 
-User --> LB : POST /api/urls
-LB --> NGINX
-NGINX --> APP
 APP --> DB : INSERT mapping
+DB --> APP : Confirm write
 APP --> REDIS : Warm cache
-APP --> User : Return short URL
 
-APP --> METRICS : Emit  \n latency / RPS
-APP --> LOGS : Structured  \n logging
+APP --> METRICS : Emit \n latency / RPS
+APP --> LOGS : Structured \n logging
 
 @enduml

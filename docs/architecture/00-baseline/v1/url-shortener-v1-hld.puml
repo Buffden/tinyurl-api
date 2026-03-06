@@ -51,21 +51,14 @@ DATA_GAP -[hidden]-> DB
 ' ---------------- FLOW ----------------
 
 User --> DNS : Resolve \n domain
-User --> LB : HTTPS \n Request
+User --> LB : HTTPS Request\n(GET /{code} or POST /shorten)
 
 LB --> NGINX
 NGINX --> APP
 
-APP --> DB : Lookup \n short_code
-DB --> APP : Return \n original_url
+APP --> DB : Lookup short_code\nor INSERT mapping
+DB --> APP : Return original_url\nor confirm write
 
-APP --> User : HTTP\n 301 / 302 \n Redirect
-
-User --> LB : POST /api/urls
-LB --> NGINX
-NGINX --> APP
-APP --> DB : INSERT short_code + original_url
-APP --> User : Return short URL
-
+APP --> User : HTTP 301/302 Redirect\nor Return short URL
 
 @enduml
