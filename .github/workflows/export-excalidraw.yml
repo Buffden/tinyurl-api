@@ -1,4 +1,3 @@
-
 name: Export Excalidraw Diagrams
 # Testing the triggering of this workflow:
 
@@ -17,7 +16,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Shared setup + export (runs in both cases) ─────────────────────────────
+  # Shared setup + export (runs in both cases)
   export:
     runs-on: ubuntu-latest
     permissions:
