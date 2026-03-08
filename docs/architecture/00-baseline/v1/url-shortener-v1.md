@@ -105,6 +105,14 @@ Reason: keep v1 small, shippable, and focused on redirect correctness + low late
 
 At 5K QPS peak, horizontal scaling is expected at the application layer.
 
+### Read Path (Redirect) — v1
+
+1. Client sends `GET /{short_code}`.
+2. Load balancer routes to an app instance via Nginx.
+3. App looks up `short_code` in the primary DB.
+4. If found and not expired → app returns HTTP 301/302 with `Location: original_url`.
+5. If not found or expired → app returns 404/410.
+
 ### Write Path (Create) — v1
 
 1. Client sends `POST /api/urls` with original URL and optional expiry.

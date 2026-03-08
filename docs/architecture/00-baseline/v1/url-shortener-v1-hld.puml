@@ -17,6 +17,13 @@ skinparam component<<spacer>> {
     FontColor transparent
 }
 
+' ---------------- LEGEND ----------------
+legend right
+  |= Color |= Path |
+  |<#4C9BE8> Blue  | Read Path  (GET /{code})   |
+  |<#FF0000> Red   | Write Path (POST /shorten) |
+endlegend
+
 ' ---------------- CLIENT ----------------
 actor User
 
@@ -48,17 +55,26 @@ NGINX -[hidden]-> APP
 APP -[hidden]-> DATA_GAP
 DATA_GAP -[hidden]-> DB
 
-' ---------------- FLOW ----------------
+' ---------------- SHARED PATH ----------------
 
 User --> DNS : Resolve \n domain
-User --> LB : HTTPS Request\n(GET /{code} or POST /shorten)
 
-LB --> NGINX
-NGINX --> APP
+' ---------------- READ PATH (blue) ----------------
 
-APP --> DB : Lookup short_code\nor INSERT mapping
-DB --> APP : Return original_url\nor confirm write
+User -[#4C9BE8]-> LB : [READ] GET /{code}
+LB -[#4C9BE8]-> NGINX
+NGINX -[#4C9BE8]-> APP
+APP -[#4C9BE8]-> DB : Lookup short_code
+DB -[#4C9BE8]-> APP : Return original_url
+APP -[#4C9BE8]-> User : HTTP 301/302 Redirect
 
-APP --> User : HTTP 301/302 Redirect\nor Return short URL
+' ---------------- WRITE PATH (red) ----------------
+
+User -[#FF0000]-> LB : [WRITE] POST /shorten
+LB -[#FF0000]-> NGINX
+NGINX -[#FF0000]-> APP
+APP -[#FF0000]-> DB : INSERT mapping
+DB -[#FF0000]-> APP : Confirm write
+APP -[#FF0000]-> User : Return short URL
 
 @enduml
