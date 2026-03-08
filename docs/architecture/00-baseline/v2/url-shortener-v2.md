@@ -151,7 +151,7 @@ Starting from v1 components, v2 requires additional components because of scale 
 
 ### Write Path (Create) — v2
 
-1. Client sends `POST /shorten` (with optional `alias` field for custom aliases) with URL and optional expiry.
+1. Client sends `POST /api/urls` (with optional `alias` field for custom aliases) with URL and optional expiry.
 2. LB forwards to Nginx; Nginx applies rate limits and forwards to App.
 3. App validates input, checks alias rules, and generates `short_code` if needed.
 4. App writes mapping to PostgreSQL (`INSERT mapping`).
