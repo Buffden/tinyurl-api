@@ -42,18 +42,18 @@ New in v2:
 
 New constraint introduced in v2: **higher QPS + hot-key traffic + abuse resistance**.
 
-| Category     | Requirement                         | Target                        | Reason |
-| ------------ | ----------------------------------- | ----------------------------- | ------ |
-| Performance  | Redirect latency (P95)              | < 80 ms                       | Cache should improve typical redirect latency. |
-| Performance  | Redirect latency (P99)              | < 150 ms                      | Reduce DB tail latency sensitivity. |
-| Performance  | Avg redirect QPS                    | ~5,000 QPS                    | Scale beyond v1 baseline. |
-| Performance  | Peak redirect QPS                   | 20,000 QPS                    | Handle spikes without collapsing DB. |
-| Performance  | Cache hit ratio (redirect path)     | > 90%                         | Redirect path must mostly avoid DB. |
-| Performance  | Read/write ratio                    | 90/10                         | At scale, reads dominate even more. |
-| Availability | Uptime                              | 99.9%                         | Still single-region; improve stability via better ops. |
-| Durability   | Data loss tolerance                 | 0%                            | Redirect mappings are durable and must not be lost. |
-| Reliability  | Error rate (redirect 5xx)           | < 0.1%                        | Defines acceptable failure envelope. |
-| Reliability  | Rate limiting effectiveness         | No sustained overload from single IP | Prevents bot spikes from dominating capacity. |
+| Category     | Requirement                      | Target                               | Reason                                                    |
+| ------------ | -------------------------------- | ------------------------------------ | --------------------------------------------------------- |
+| Performance  | Redirect latency (P95)           | < 80 ms                              | Cache should improve typical redirect latency.            |
+| Performance  | Redirect latency (P99)           | < 150 ms                             | Reduce DB tail latency sensitivity.                       |
+| Performance  | Avg redirect QPS                 | ~5,000 QPS                           | Scale beyond v1 baseline.                                 |
+| Performance  | Peak redirect QPS                | 20,000 QPS                           | Handle spikes without collapsing DB.                      |
+| Performance  | Cache hit ratio (redirect path)  | > 90%                                | Redirect path must mostly avoid DB.                       |
+| Performance  | Read/write ratio                 | 90/10                                | At scale, reads dominate even more.                       |
+| Availability | Uptime                           | 99.9%                                | Still single-region; improve stability via better ops.    |
+| Durability   | Data loss tolerance              | 0%                                   | Redirect mappings are durable and must not be lost.       |
+| Reliability  | Error rate (redirect 5xx)        | < 0.1%                               | Defines acceptable failure envelope.                      |
+| Reliability  | Rate limiting effectiveness      | No sustained overload from single IP | Prevents bot spikes from dominating capacity.             |
 
 ### Capacity Estimation (v2 intuition)
 
@@ -71,19 +71,19 @@ New constraint introduced in v2: **higher QPS + hot-key traffic + abuse resistan
 
 ## 4) Assumptions
 
-| Assumption                             | Value |
-| -------------------------------------- | ----- |
-| Average URL length                     | ~100 chars avg; max 2,048 |
-| Short code length                      | 6–8 chars Base62 |
-| Traffic distribution                   | Highly skewed (Zipf-like): top 1–5% links dominate |
-| Users globally distributed             | Yes (single region deployment) |
-| Authentication required                | No (still v2) |
-| Analytics tracking                     | No full analytics dashboard (still deferred) |
-| Cache strategy                         | Cache-aside for redirects |
-| Cache TTL policy                       | TTL = min(remaining expiry, max_ttl) |
-| Negative caching                       | Enabled for unknown codes with small TTL |
-| Abuse threat model                     | Enumeration + bot spikes + write flooding are expected |
-| Consistency expectation                | Cache may serve slightly stale data within TTL window (acceptable since links are immutable) |
+| Assumption                  | Value                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| Average URL length          | ~100 chars avg; max 2,048                                                                     |
+| Short code length           | 6–8 chars Base62                                                                              |
+| Traffic distribution        | Highly skewed (Zipf-like): top 1-5% links dominate                                            |
+| Users globally distributed  | Yes (single region deployment)                                                                |
+| Authentication required     | No (still v2)                                                                                 |
+| Analytics tracking          | No full analytics dashboard (still deferred)                                                  |
+| Cache strategy              | Cache-aside for redirects                                                                     |
+| Cache TTL policy            | TTL = min(remaining expiry, max_ttl)                                                          |
+| Negative caching            | Enabled for unknown codes with small TTL                                                      |
+| Abuse threat model          | Enumeration + bot spikes + write flooding are expected                                        |
+| Consistency expectation     | Cache may serve slightly stale data within TTL window (acceptable since links are immutable)  |
 
 ---
 
@@ -99,7 +99,28 @@ Version 2:
 
 ---
 
-## 6) Minimum Components (What Must Exist)
+## 6) Architecture Overview
+
+Deployment: **AWS Region (Single Region)**, hosted on `tinyurl.buffden.com`.
+
+### Layers
+
+| Layer | Components |
+| --- | --- |
+| Public Internet | DNS (`tinyurl.buffden.com`) |
+| Entry Layer | Load Balancer (L4 / L7) |
+| Application Tier | Nginx (TLS Termination + Reverse Proxy), URL Shortener App (Stateless Instances + Token Bucket RL) |
+| Cache Layer | Redis (Cache-Aside + Negative Caching) |
+| Data Tier | PostgreSQL Primary DB |
+| Observability | Metrics (P95, P99, QPS), Structured Logs |
+
+Legend:
+- **Blue path** — Read path (`GET /{code}`)
+- **Red path** — Write path (`POST /shorten`)
+
+---
+
+## 7) Minimum Components (What Must Exist)
 
 Starting from v1 components, v2 requires additional components because of scale constraints:
 
@@ -116,14 +137,32 @@ Starting from v1 components, v2 requires additional components because of scale 
   - Logs (structured)
   - Tracing (optional; can be added later)
 
+### Read Path (Redirect) — v2
+
+1. User resolves domain via DNS.
+2. Client sends `GET /{code}` to Load Balancer.
+3. LB forwards to Nginx; Nginx forwards to App.
+4. App looks up `short_code` in Redis.
+5. **Cache hit**: Redis returns `original_url` (or NULL for negative cache) → skip to step 8.
+6. **Cache miss**: App queries PostgreSQL (`Cache miss lookup`).
+7. PostgreSQL returns the mapping to App.
+8. App writes result back to Redis: `Cache populate (TTL)` or `Store NULL (TTL)` for unknown codes.
+9. App responds to User: `HTTP 301/302 Redirect` or `HTTP 404 Not Found`.
+
 ### Write Path (Create) — v2
 
 1. Client sends `POST /api/urls` (with optional `alias` field for custom aliases) with URL and optional expiry.
-2. Nginx applies rate limits and forwards to app.
+2. LB forwards to Nginx; Nginx applies rate limits and forwards to App.
 3. App validates input, checks alias rules, and generates `short_code` if needed.
-4. App writes mapping to primary DB (with soft delete fields defaulted).
-5. App warms Redis cache for the new mapping.
-6. App returns the short URL to the client.
+4. App writes mapping to PostgreSQL (`INSERT mapping`).
+5. PostgreSQL confirms write to App.
+6. App warms Redis cache for the new mapping (`Warm cache`).
+7. App returns the short URL to the client.
+
+### Observability Flows (Both Paths)
+
+- App emits **latency and RPS metrics** (P95, P99, QPS) to the Metrics component.
+- App emits **structured logs** to the Logs component.
 
 ---
 

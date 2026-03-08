@@ -17,6 +17,13 @@ skinparam component<<spacer>> {
     FontColor transparent
 }
 
+' ---------------- LEGEND ----------------
+legend right
+  |= Color |= Path |
+  |<#4C9BE8> Blue  | Read Path  (GET /{code})   |
+  |<#FF0000> Red   | Write Path (POST /shorten) |
+endlegend
+
 ' ---------------- CLIENT ----------------
 actor User
 
@@ -58,27 +65,33 @@ APP -[hidden]-> REDIS
 REDIS -[hidden]-> DATA_GAP
 DATA_GAP -[hidden]-> DB
 
-' ---------------- FLOW ----------------
+' ---------------- SHARED PATH ----------------
 
 User --> DNS : Resolve \n domain
-User --> LB : HTTPS Request\n(GET /{code} or POST /shorten)
 
-LB --> NGINX
-NGINX --> APP
+' ---------------- READ PATH (blue) ----------------
 
-APP --> REDIS : Lookup \n short_code
-REDIS --> APP : Cache hit\nor NULL (negative cache)
+User -[#4C9BE8]-> LB : [READ] GET /{code}
+LB -[#4C9BE8]-> NGINX
+NGINX -[#4C9BE8]-> APP
+APP -[#4C9BE8]-> REDIS : Lookup short_code
+REDIS -[#4C9BE8]-> APP : Cache hit\nor NULL (negative cache)
+APP -[#4C9BE8]-> DB : Cache miss lookup
+DB -[#4C9BE8]-> APP : Return mapping
+APP -[#4C9BE8]-> REDIS : Cache populate (TTL)\nor Store NULL (TTL)
+APP -[#4C9BE8]-> User : HTTP 301/302 Redirect\nor HTTP 404 Not Found
 
-APP --> DB : Cache miss \n lookup
-DB --> APP : Return \n mapping
+' ---------------- WRITE PATH (red) ----------------
 
-APP --> REDIS : Cache populate (TTL)\nor Store NULL (TTL)
+User -[#FF0000]-> LB : [WRITE] POST /shorten
+LB -[#FF0000]-> NGINX
+NGINX -[#FF0000]-> APP
+APP -[#FF0000]-> DB : INSERT mapping
+DB -[#FF0000]-> APP : Confirm write
+APP -[#FF0000]-> REDIS : Warm cache
+APP -[#FF0000]-> User : Return short URL
 
-APP --> User : HTTP 301/302 Redirect\nor HTTP 404 Not Found\nor Return short URL
-
-APP --> DB : INSERT mapping
-DB --> APP : Confirm write
-APP --> REDIS : Warm cache
+' ---------------- OBSERVABILITY (both paths) ----------------
 
 APP --> METRICS : Emit \n latency / RPS
 APP --> LOGS : Structured \n logging
