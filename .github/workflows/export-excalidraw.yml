@@ -1,0 +1,80 @@
+
+name: Export Excalidraw Diagrams
+# Testing the triggering of this workflow:
+
+on:
+  # Runs on any PR (any target branch) that touches .excalidraw files → validate only
+  pull_request:
+    paths:
+      - '**/*.excalidraw'
+
+  # Runs when .excalidraw files land on main (PR merged) → export + commit
+  push:
+    branches: [main]
+    paths:
+      - '**/*.excalidraw'
+
+  workflow_dispatch:
+
+jobs:
+  # ── Shared setup + export (runs in both cases) ─────────────────────────────
+  export:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install excalidraw-brute-export-cli
+        # Local install so npx resolves playwright from the same node_modules,
+        # guaranteeing the Firefox cache path matches what the CLI expects
+        run: npm install excalidraw-brute-export-cli
+
+      - name: Install Playwright + Firefox
+        # Uses the locally installed playwright (correct version) to install Firefox
+        run: npx playwright install --with-deps firefox
+
+      # On PR  → validates every .excalidraw can be exported (job fails = PR blocked)
+      # On push → same step, but followed by the commit step below
+      - name: Export .excalidraw files → diagrams/
+        run: |
+          set -eo pipefail
+          find . -name "*.excalidraw" \
+            -not -path "./.git/*" \
+            -not -path "./node_modules/*" \
+          | while IFS= read -r file; do
+            rel="${file#./}"
+            out="diagrams/${rel%.excalidraw}.svg"
+            mkdir -p "$(dirname "$out")"
+            echo "Exporting: $rel → $out"
+            npx excalidraw-brute-export-cli \
+              -i "$file" \
+              --format svg \
+              --scale 1 \
+              --background 1 \
+              --embed-scene 0 \
+              --dark-mode 0 \
+              -o "$out"
+          done
+
+      # Commits back on push to main (PR merged) or manual workflow_dispatch
+      # Skipped entirely during PR validation runs
+      - name: Commit exported SVGs to main
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diagrams/
+          if git diff --staged --quiet; then
+            echo "No diagram changes to commit."
+          else
+            git commit -m "chore: auto-export excalidraw diagrams [skip ci]"
+            git push
+          fi
