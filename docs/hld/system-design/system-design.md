@@ -16,27 +16,23 @@ The architecture follows a stateless application tier backed by a relational dat
 
 ### v1 Components
 
-```
-User → DNS → Load Balancer → Nginx (TLS) → App Server(s) → PostgreSQL
-```
+![v1 HLD](../../../diagrams/docs/architecture/00-baseline/v1/url-shortener-v1-hld.svg)
 
 | Component | Responsibility |
-|---|---|
+| --- | --- |
 | DNS | Resolves `tinyurl.buffden.com` to the load balancer. |
 | Load Balancer (L4/L7) | Distributes traffic across application instances. Health checks. |
-| Nginx | TLS termination, reverse proxy, static rate limiting (v2). |
-| Application Server | Application servers hold no in-memory state required for correctness. Any instance can handle any request. Horizontally scalable. |
+| Nginx | TLS termination, reverse proxy. |
+| Application Server | Stateless — any instance can handle any request. Horizontally scalable. |
 | PostgreSQL | Primary data store. Stores `short_code → original_url` mappings. Single primary. |
 
 ### v2 Additions
 
-```
-User → DNS → LB → Nginx (TLS + Rate Limiting) → App → Redis (Cache) → PostgreSQL
-                                                      ↘ Metrics + Logs
-```
+![v2 HLD](../../../diagrams/docs/architecture/00-baseline/v2/url-shortener-v2-hld.svg)
 
 | Component | Responsibility |
-|---|---|
+| --- | --- |
+| Nginx (v2) | TLS termination, reverse proxy, static rate limiting. |
 | Redis | Cache-aside for redirect path. Negative caching for unknown codes. |
 | Metrics | RPS, latency percentiles, cache hit ratio, DB latency. |
 | Structured Logs | Request tracing and operational debugging. |
@@ -71,7 +67,7 @@ User → DNS → LB → Nginx (TLS + Rate Limiting) → App → Redis (Cache) �
 ## 4) Failure Domains
 
 | Component | Failure Impact | Mitigation |
-|---|---|---|
+| --- | --- | --- |
 | PostgreSQL down | All redirects and creates fail | Automated backups, failover plan, 503 response |
 | Redis down (v2) | Cache misses → all traffic hits DB | Circuit breaker, degrade to DB-only mode |
 | App crash | Partial 5xx errors | Multiple instances, health checks, auto-restart |
@@ -92,13 +88,3 @@ User → DNS → LB → Nginx (TLS + Rate Limiting) → App → Redis (Cache) �
 - **App tier**: Autoscaling based on CPU + P95 latency.
 - **Cache tier**: Redis cluster mode for HA and shardable capacity.
 - **DB tier**: Single primary with connection pool tuning. Read replicas considered only under measured cache miss pressure.
-
-See [ADR-002: Scaling Approach](../architecture/00-baseline/adr/ADR-002-scaling-approach.md) for the full decision record.
-
----
-
-## 6) Diagrams
-
-- v1 HLD: [`../architecture/00-baseline/v1/url-shortener-v1-hld.puml`](../architecture/00-baseline/v1/url-shortener-v1-hld.puml)
-- v2 HLD: [`../architecture/00-baseline/v2/url-shortener-v2-hld.puml`](../architecture/00-baseline/v2/url-shortener-v2-hld.puml)
-- System overview diagram: [`../diagrams/architecture/system-overview.puml`](../diagrams/architecture/system-overview.puml)
