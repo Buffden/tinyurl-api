@@ -563,7 +563,7 @@
       "type": "text",
       "index": "a6",
       "frameId": null,
-      "x": -202.97372565289925,
+      "x": -203.09091315289925,
       "y": -31.903209666071167,
       "width": 153.63186645507812,
       "height": 40.72727272727273,
@@ -578,8 +578,8 @@
       "groupIds": [],
       "roundness": null,
       "seed": 1007,
-      "version": 216,
-      "versionNonce": 922573552,
+      "version": 217,
+      "versionNonce": 1791476677,
       "isDeleted": false,
       "boundElements": [
         {
@@ -587,7 +587,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1772951932181,
+      "updated": 1773127305662,
       "link": null,
       "locked": false,
       "text": "DNS\n(tinyurl.buffden.com)",
@@ -806,7 +806,7 @@
       "type": "text",
       "index": "aC",
       "frameId": null,
-      "x": 342.72802734375,
+      "x": 342.56114528797673,
       "y": 158.1818181818182,
       "width": 114.5439453125,
       "height": 40.72727272727273,
@@ -821,8 +821,8 @@
       "groupIds": [],
       "roundness": null,
       "seed": 1013,
-      "version": 11,
-      "versionNonce": 167362576,
+      "version": 12,
+      "versionNonce": 407451973,
       "isDeleted": false,
       "boundElements": [
         {
@@ -830,7 +830,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1772951939048,
+      "updated": 1773127311734,
       "link": null,
       "locked": false,
       "text": "Load Balancer\n(L4 / L7)",
@@ -1310,7 +1310,7 @@
       "index": "aM",
       "frameId": null,
       "x": 1738.46403366749,
-      "y": 553.1845055228076,
+      "y": 553.0176234670344,
       "width": 149.31192016601562,
       "height": 61.09090909090909,
       "angle": 0,
@@ -1324,11 +1324,11 @@
       "groupIds": [],
       "roundness": null,
       "seed": 1023,
-      "version": 993,
-      "versionNonce": 1297629712,
+      "version": 994,
+      "versionNonce": 1942201189,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1772951970832,
+      "updated": 1773127320266,
       "link": null,
       "locked": false,
       "text": "Redis\n(Cache-Aside)\n+ Negative Caching",
@@ -1719,10 +1719,10 @@
       "type": "arrow",
       "index": "aX",
       "frameId": null,
-      "x": -112.40531132952565,
-      "y": 141.2587548509099,
-      "width": 0.4072091762295429,
-      "height": 118.43469178970834,
+      "x": -112.07681840340057,
+      "y": 141.26287233262045,
+      "width": 0.014421181456739873,
+      "height": 118.43880927141889,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -1734,11 +1734,11 @@
       "groupIds": [],
       "roundness": null,
       "seed": 1034,
-      "version": 733,
-      "versionNonce": 1179520016,
+      "version": 734,
+      "versionNonce": 1124401957,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1772951932182,
+      "updated": 1773127305663,
       "link": null,
       "locked": false,
       "points": [
@@ -1747,8 +1747,8 @@
           0
         ],
         [
-          0.4072091762295429,
-          -118.43469178970834
+          -0.014421181456739873,
+          -118.43880927141889
         ]
       ],
       "lastCommittedPoint": null,
