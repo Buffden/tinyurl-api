@@ -1,27 +1,22 @@
-# Database Data Flow
+# Database Data Flow (v2)
 
-> Read and write query paths for TinyURL, including deduplication and soft-delete handling.
+> Read and write query paths for TinyURL v2, including `url_hash` population and soft-delete handling.
 
 ---
 
 ## 1) Write Path (Create)
 
 1. App computes `url_hash = SHA-256(original_url)`.
-2. App queries for an existing mapping:
-   ```sql
-   SELECT short_code FROM url_mappings
-   WHERE url_hash = $1 AND is_deleted = FALSE;
-   ```
-   - **If found**: return the existing short URL (deduplication hit — no insert needed).
-   - **If not found**: proceed to insert.
-3. App calls `nextval('url_mappings_id_seq')` to get the next ID (served from local sequence cache if configured).
-4. App encodes the ID to Base62 to produce `short_code`.
-5. App inserts the row:
+2. App calls `nextval('url_mappings_id_seq')` to get the next ID (served from local sequence cache if configured).
+3. App encodes the ID to Base62 to produce `short_code`.
+4. App inserts the row:
+
    ```sql
    INSERT INTO url_mappings (short_code, original_url, url_hash, created_at, expires_at, created_ip, user_agent)
    VALUES ($1, $2, $3, NOW(), $4, $5, $6);
    ```
-   `uq_url_hash` handles the race condition if two identical URLs are submitted concurrently — the second insert will fail the unique constraint and the app retries the deduplication lookup.
+
+5. Repeated identical requests still create distinct rows with different `short_code` values. `url_hash` is stored for lookup and analysis only; it does not participate in uniqueness enforcement.
 
 ---
 
@@ -45,10 +40,12 @@
 5. **Not found** (unknown code): return `404 Not Found`.
 6. **Soft-deleted distinction** (optional — if 404 vs 410 precision is needed for deleted codes):
    Issue a secondary query on miss:
+
    ```sql
    SELECT 1 FROM url_mappings
    WHERE short_code = $1 AND is_deleted = TRUE;
    ```
+
    If found → return `410 Gone`. This is rare (soft deletes are infrequent) and adds negligible overhead.
 
 ---

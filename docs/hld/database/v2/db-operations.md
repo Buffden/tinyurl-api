@@ -1,6 +1,6 @@
-# Database Operations
+# Database Operations (v2)
 
-> ID generation, connection pooling, autovacuum tuning, expiration cleanup, and partitioning strategy.
+> ID generation, connection pooling, autovacuum tuning, expiration cleanup, and partitioning strategy for v2.
 
 ---
 

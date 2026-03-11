@@ -1,6 +1,6 @@
-# Database Design
+# Database Design (v2)
 
-> Index and overview for TinyURL database design. Each topic is covered in a dedicated file.
+> Version 2 database design for TinyURL. Each topic is covered in a dedicated file.
 
 ---
 
@@ -30,7 +30,7 @@ One table: `url_mappings` — maps `short_code → original_url` with expiry, so
 | Decision | Choice | Reason |
 | --- | --- | --- |
 | Timestamps | `TIMESTAMPTZ` | Timezone-safe; avoids silent expiry comparison bugs |
-| URL deduplication | SHA-256 hash (`url_hash`) | Prevents duplicate rows for the same destination URL |
+| URL hash lookup | SHA-256 hash (`url_hash`) | Speeds lookup and analysis for repeated destination URLs without preventing multiple short links |
 | Soft delete | `is_deleted` + `deleted_at` | Blocks malicious links without losing auditability |
 | Namespace reservation | `uq_short_code` covers deleted rows | Deleted codes are never reissued |
 | URL length cap | `CHECK (length <= 2048)` at DB layer | App layer validates first; DB is the last line of defence |

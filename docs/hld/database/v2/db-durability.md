@@ -1,6 +1,6 @@
-# Database Durability, Storage, and Migration
+# Database Durability, Storage, and Migration (v2)
 
-> Durability guarantees, backup strategy, storage projections, and schema migration path.
+> Durability guarantees, backup strategy, storage projections, and schema migration path for v2.
 
 ---
 
@@ -74,6 +74,6 @@ SET synchronous_commit = on;
 | --- | --- | --- |
 | v1 | Initial schema with `is_deleted`, `deleted_at` (defaulted, unused) | `CREATE TABLE` |
 | v2 | Add `created_ip`, `user_agent`, `url_hash` columns | `ALTER TABLE ADD COLUMN` — non-blocking in PostgreSQL for nullable/defaulted columns |
-| v2 | Add `uq_url_hash_active` partial unique index | `CREATE UNIQUE INDEX CONCURRENTLY uq_url_hash_active ON url_mappings (url_hash) WHERE is_deleted = FALSE` — zero downtime |
+| v2 | Add `idx_url_hash` non-unique index | `CREATE INDEX CONCURRENTLY idx_url_hash ON url_mappings (url_hash)` — zero downtime |
 | v2 | Add per-table autovacuum settings | `ALTER TABLE SET (...)` — online, no lock |
 | v3+ | Partitioning | Requires table rebuild — plan for a maintenance window or use `pg_partman` for online migration |

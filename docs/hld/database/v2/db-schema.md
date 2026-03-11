@@ -1,6 +1,6 @@
-# Database Schema
+# Database Schema (v2)
 
-> Table definition, column rationale, indexing strategy, and constraints for TinyURL.
+> Table definition, column rationale, indexing strategy, and constraints for the v2 design.
 
 ---
 
@@ -51,7 +51,7 @@ CREATE TABLE url_mappings (
 | `id` | BIGSERIAL | No | Auto-increment | Internal numeric ID used for Base62 short code generation |
 | `short_code` | VARCHAR(32) | No | — | The short code appearing in the URL. Unique across all rows including deleted. Supports custom aliases up to 32 chars. |
 | `original_url` | TEXT | No | — | Destination URL. Max 2,048 chars enforced at both app and DB layer. |
-| `url_hash` | CHAR(64) | No | — | SHA-256 hex digest of `original_url`. Used to detect and deduplicate identical URLs before insert. |
+| `url_hash` | CHAR(64) | No | — | SHA-256 hex digest of `original_url`. Indexed for fast lookup, filtering, and operational analysis of repeated destination URLs without enforcing uniqueness. |
 | `created_at` | TIMESTAMPTZ | No | `NOW()` | Record creation time (timezone-aware). |
 | `expires_at` | TIMESTAMPTZ | Yes | NULL | Expiration time. NULL = system default of 180 days applied at app layer. |
 | `is_deleted` | BOOLEAN | No | `FALSE` | Soft delete flag for abuse blocking without losing auditability. |
@@ -63,9 +63,9 @@ CREATE TABLE url_mappings (
 
 `TIMESTAMP` stores no timezone metadata. If the app server, DB server, or team operates across timezones, `TIMESTAMP` silently produces incorrect comparisons for expiration checks. `TIMESTAMPTZ` stores UTC internally and converts on read — always correct regardless of server locale.
 
-### Why `url_hash` for Deduplication
+### Why Index `url_hash`
 
-Without deduplication, the same URL can be shortened 1M times producing 1M rows — wasted storage and a poor user experience. `url_hash` (SHA-256 of the original URL) lets the app do a fast lookup before insert and return the existing short URL if it already exists. `uq_url_hash` prevents race conditions when two identical URLs are submitted concurrently.
+The system allows the same destination URL to be shortened multiple times, producing different short codes for separate requests. `url_hash` (SHA-256 of the original URL) is still useful because it supports fast lookups, reporting, and abuse analysis for repeated destinations. The index on `url_hash` improves those queries while intentionally allowing duplicate values.
 
 See the full query in [db-data-flow.md — Write Path](db-data-flow.md#1-write-path-create).
 
@@ -80,12 +80,12 @@ See the full query in [db-data-flow.md — Write Path](db-data-flow.md#1-write-p
 | `pk_url_mappings` | B-tree (PK) | `id` | — | Row identity. Implicit from `PRIMARY KEY`. |
 | `uq_short_code` | B-tree (Unique) | `short_code` | — | Global uniqueness including deleted rows. Deleted codes are permanently reserved and never reissued (see UC-US-004). |
 | `idx_short_code_active` | B-tree (Partial, Covering) | `short_code` INCLUDE `original_url, expires_at` | `WHERE is_deleted = FALSE` | Redirect path — index-only scan, no heap fetch needed. `uq_short_code` enforces hard uniqueness; this index exists for query speed only. |
-| `uq_url_hash_active` | B-tree (Partial, Unique) | `url_hash` | `WHERE is_deleted = FALSE` | Deduplication lookup before insert. Partial so soft-deleted URLs can be re-shortened. |
+| `idx_url_hash` | B-tree | `url_hash` | — | Fast lookup and filtering by hashed destination URL without enforcing uniqueness. |
 | `idx_expires_at` | B-tree (Partial) | `expires_at` | `WHERE expires_at IS NOT NULL` | Cleanup job scan only — excludes permanent links, keeping the index compact. Not on any hot path. |
 
 ### Indexes to Create Explicitly
 
-`pk_url_mappings` and `uq_short_code` are created implicitly by the `CREATE TABLE` DDL above. The three partial indexes must be created separately:
+`pk_url_mappings` and `uq_short_code` are created implicitly by the `CREATE TABLE` DDL above. The remaining indexes must be created separately:
 
 ```sql
 -- Covering index: satisfies the redirect query with an index-only scan (no heap fetch)
@@ -94,10 +94,9 @@ CREATE INDEX idx_short_code_active
     INCLUDE (original_url, expires_at)
     WHERE is_deleted = FALSE;
 
--- Partial unique index: allows soft-deleted URLs to be re-shortened
-CREATE UNIQUE INDEX uq_url_hash_active
-    ON url_mappings (url_hash)
-    WHERE is_deleted = FALSE;
+-- Non-unique index: supports lookup by destination hash while allowing repeated URLs
+CREATE INDEX idx_url_hash
+    ON url_mappings (url_hash);
 
 -- Cleanup job scan: excludes permanent links, keeps the index compact
 CREATE INDEX idx_expires_at
