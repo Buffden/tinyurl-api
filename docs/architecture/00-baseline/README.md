@@ -155,3 +155,4 @@ See [v2/url-shortener-v2.md](v2/url-shortener-v2.md) and [v2/url-shortener-v2-hl
 | [adr/ADR-002](adr/ADR-002-scaling-approach.md) | Scaling: horizontal app layer, single primary DB |
 | [adr/ADR-003](adr/ADR-003-redirect-status-code.md) | Redirect status: 301 vs 302 based on expiry intent |
 | [adr/ADR-004](adr/ADR-004-expiration-policy.md) | Expiration: 180-day default, HTTP 410 for expired/deleted, HTTP 404 for unknown |
+| [adr/ADR-005](adr/ADR-005-technology-stack.md) | Technology stack: language, framework, DB driver, Redis client, migrations |
