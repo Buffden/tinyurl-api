@@ -1,17 +1,17 @@
 # Use Cases
 
-> Summary of user interaction scenarios. For detailed individual specifications, see [`../use-cases/`](../use-cases/).
+> Summary of user interaction scenarios. For detailed individual specifications organized by version, see [`../use-cases/`](../use-cases/README.md).
 
 ---
 
 ## Use Case Index
 
-| ID | Name | Version | Actor | Description |
+| ID | Name | Version | Actor | Detailed Spec |
 | --- | --- | --- | --- | --- |
-| UC-US-001 | Shorten URL | v1 | User | Submit a long URL and receive a short URL |
-| UC-US-002 | Redirect URL | v1 | User | Access a short URL and get redirected to the original |
-| UC-US-003 | Expire URL | v1 | System | Handle expiration of short URLs |
-| UC-US-004 | Custom Alias | v2 | User | Create a short URL with a custom alias |
+| UC-US-001 | Shorten URL | v1 | User | [v1](../use-cases/v1/UC-US-001-shorten-url.md) · [v2](../use-cases/v2/UC-US-001-shorten-url.md) |
+| UC-US-002 | Redirect URL | v1 | User | [v1](../use-cases/v1/UC-US-002-redirect-url.md) · [v2](../use-cases/v2/UC-US-002-redirect-url.md) |
+| UC-US-003 | Expire URL | v1 | System | [v1](../use-cases/v1/UC-US-003-expire-url.md) · [v2](../use-cases/v2/UC-US-003-expire-url.md) |
+| UC-US-004 | Custom Alias | v2 | User | [v2](../use-cases/v2/UC-US-004-custom-alias.md) |
 
 ---
 
