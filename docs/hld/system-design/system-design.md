@@ -43,7 +43,7 @@ The architecture follows a stateless application tier backed by a relational dat
 
 ### Write Path (Create Short URL)
 
-1. Client sends `POST /create` with original URL and optional expiry.
+1. Client sends `POST /api/urls` with original URL and optional expiry.
 2. Request passes through LB → Nginx → App.
 3. App validates input (URL format, length).
 4. App generates `short_code` via DB sequence + Base62 encoding.

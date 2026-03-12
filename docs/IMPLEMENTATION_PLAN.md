@@ -47,7 +47,7 @@ This document defines the phased implementation plan for TinyURL. Each phase has
 
 ### Deliverables
 
-- [ ] `POST /create` — URL shortening endpoint
+- [ ] `POST /api/urls` — URL shortening endpoint
   - URL validation (format, length)
   - DB sequence-based ID generation
   - Base62 encoding
