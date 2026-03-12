@@ -11,8 +11,8 @@
 | [api-contract.md](api-contract.md) | All HTTP endpoints — request/response schemas, error codes, status codes | Done |
 | [c4-diagrams.md](c4-diagrams.md) | C4 model — 5 Excalidraw diagrams with full documentation (see below) | Done |
 | [module-structure.md](module-structure.md) | Java package layout, class responsibilities, dependency rules | Done |
-| cache-module.md | Cache-aside algorithm, TTL strategy, invalidation, circuit breaker (v2) | Pending |
-| rate-limiting-module.md | Bucket4j token bucket config, Redis-backed limits, 429 headers (v2) | Pending |
+| [cache-module.md](cache-module.md) | Cache-aside algorithm, TTL strategy, invalidation, circuit breaker (v2) | Done |
+| [rate-limiting-module.md](rate-limiting-module.md) | Bucket4j token bucket config, Redis-backed limits, 429 headers (v2) | Done |
 
 ---
 
