@@ -32,7 +32,7 @@
       "locked": false,
       "text": "URL Shortener v1 — High Level Design (Single Region)",
       "fontSize": 31.65,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 21,
@@ -183,16 +183,16 @@
       "groupIds": [],
       "roundness": null,
       "seed": 2005,
-      "version": 10,
-      "versionNonce": 1055284937,
+      "version": 11,
+      "versionNonce": 25599915,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773127257574,
+      "updated": 1773270997256,
       "link": null,
       "locked": false,
       "text": "Public Internet",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "left",
       "verticalAlign": "top",
       "baseline": 11,
@@ -265,7 +265,7 @@
       "locked": false,
       "text": "DNS\n(tinyurl.buffden.com)",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 11,
@@ -333,7 +333,7 @@
       "locked": false,
       "text": "AWS Region (Single Region)",
       "fontSize": 20,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "left",
       "verticalAlign": "top",
       "baseline": 12,
@@ -401,7 +401,7 @@
       "locked": false,
       "text": "Entry Layer",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "left",
       "verticalAlign": "top",
       "baseline": 11,
@@ -462,7 +462,7 @@
       "type": "text",
       "index": "aC",
       "frameId": null,
-      "x": 337.72802734375,
+      "x": 337.84521484375,
       "y": 169.1818181818182,
       "width": 114.5439453125,
       "height": 40.72727272727273,
@@ -477,16 +477,16 @@
       "groupIds": [],
       "roundness": null,
       "seed": 2013,
-      "version": 21,
-      "versionNonce": 672080073,
+      "version": 22,
+      "versionNonce": 1813771941,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773127234300,
+      "updated": 1773270999831,
       "link": null,
       "locked": false,
       "text": "Load Balancer\n(L4 / L7)",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 12,
@@ -567,7 +567,7 @@
       "locked": false,
       "text": "Application Tier",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "left",
       "verticalAlign": "top",
       "baseline": 11,
@@ -661,7 +661,7 @@
       "locked": false,
       "text": "Nginx\n(TLS Termination + Reverse\nProxy)",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 12,
@@ -762,7 +762,7 @@
       "locked": false,
       "text": "URL Shortener App\n(Stateless Instances)",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 12,
@@ -838,16 +838,16 @@
       "groupIds": [],
       "roundness": null,
       "seed": 2021,
-      "version": 110,
-      "versionNonce": 968990791,
+      "version": 112,
+      "versionNonce": 1845296165,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773127283182,
+      "updated": 1773271004645,
       "link": null,
       "locked": false,
       "text": "Data Tier",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "left",
       "verticalAlign": "top",
       "baseline": 11,
@@ -915,7 +915,7 @@
       "locked": false,
       "text": "PostgreSQL\nPrimary DB",
       "fontSize": 16,
-      "fontFamily": 1,
+      "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 12,
@@ -979,7 +979,7 @@
         "containerId": "arr-user-dns",
         "text": "Resolve\ndomain",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       }
     },
     {
@@ -1078,7 +1078,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       }
     },
     {
@@ -1177,7 +1177,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       }
     },
     {
@@ -1276,7 +1276,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       }
     },
     {
@@ -1375,7 +1375,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       }
     },
     {
@@ -1490,7 +1490,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       },
       "elbowed": true,
       "fixedSegments": [
@@ -1629,7 +1629,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       },
       "elbowed": true,
       "fixedSegments": [
@@ -1790,7 +1790,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       },
       "elbowed": true,
       "fixedSegments": [
@@ -1940,7 +1940,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       },
       "elbowed": true,
       "fixedSegments": [
@@ -2066,7 +2066,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       }
     },
     {
@@ -2185,7 +2185,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       },
       "elbowed": true,
       "fixedSegments": [
@@ -2312,7 +2312,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       },
       "elbowed": true,
       "fixedSegments": null,
@@ -2415,7 +2415,7 @@
         "containerId": "arr-user-lb",
         "text": "HTTPS Request\n(GET /{code}\nor POST /shorten)",
         "fontSize": 11,
-        "fontFamily": 1
+        "fontFamily": 5
       }
     },
     {
