@@ -67,8 +67,6 @@ Detailed execution guide: [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md)
 
 **Goal**: Implement the URL shortening and redirect endpoints — the production-ready v1 baseline.
 
-Detailed roadmap for Phases 2-8: [V1_TO_V2_EXECUTION_PLAN.md](V1_TO_V2_EXECUTION_PLAN.md)
-
 ### Deliverables
 
 - [ ] `POST /api/urls` — URL shortening endpoint
