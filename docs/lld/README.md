@@ -22,8 +22,8 @@ Five Excalidraw diagrams that progressively zoom into the system. Open them in V
 
 | # | Level | File | Scope |
 |---|-------|------|-------|
-| 1 | System Context | [c4-level1-system-context.excalidraw](c4-level1-system-context.excalidraw) | TinyURL as a black box — End User, DNS |
-| 2 | Container | [c4-level2-container.excalidraw](c4-level2-container.excalidraw) | Deployable units — LB, Nginx, App, Redis, PgBouncer, PostgreSQL, Observability |
+| 1 | System Context | [c4-level1-system-context.excalidraw](c4-level1-system-context.excalidraw) | TinyURL as a black box — End User, CloudFront, S3 |
+| 2 | Container | [c4-level2-container.excalidraw](c4-level2-container.excalidraw) | Deployable/runtime units — CloudFront, S3, Nginx, App, Redis, PgBouncer, PostgreSQL, Observability |
 | 3 | Component | [c4-level3-component.excalidraw](c4-level3-component.excalidraw) | Spring Boot internals — DispatcherServlet, middleware, controllers, services, repositories |
 | 4 | Code | [c4-level4-code.excalidraw](c4-level4-code.excalidraw) | Java interfaces, classes, and dependency graph across 6 packages |
 | 5 | Deployment | [c4-deployment.excalidraw](c4-deployment.excalidraw) | Docker Compose on EC2 — images, ports, volumes, health checks, AWS SSM secrets |
