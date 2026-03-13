@@ -8,7 +8,7 @@
 
 TinyURL is a single-region URL shortener deployed at `tinyurl.buffden.com`. The system accepts long URLs, generates unique short codes, and redirects users to the original URL with low latency.
 
-The architecture follows a stateless application tier backed by a relational database, with caching introduced in v2 to absorb redirect traffic.
+The architecture is CloudFront-first at the edge, with backend services running as Docker containers orchestrated by Docker Compose on a single EC2 host. The application tier is stateless and backed by a relational database, with caching introduced in v2 to absorb redirect traffic.
 
 ---
 
@@ -20,10 +20,11 @@ The architecture follows a stateless application tier backed by a relational dat
 
 | Component | Responsibility |
 | --- | --- |
-| DNS | Resolves `tinyurl.buffden.com` to the load balancer. |
-| Load Balancer (L4/L7) | Distributes traffic across application instances. Health checks. |
+| DNS (Route53) | Resolves `tinyurl.buffden.com` and `app.tinyurl.buffden.com` to CloudFront distributions. |
+| CloudFront (API dist) | Public API and redirect entry point. Forwards backend traffic to Nginx origin. |
+| CloudFront (SPA dist) | Serves frontend traffic from S3 origin with CDN caching and SPA fallback rules. |
 | Nginx | TLS termination, reverse proxy. |
-| Application Server | Stateless — any instance can handle any request. Horizontally scalable. |
+| Application Server | Stateless — any instance can handle any request. Horizontally scalable within the backend runtime boundary. |
 | PostgreSQL | Primary data store. Stores `short_code → original_url` mappings. Single primary. |
 
 ### v2 Additions
@@ -37,6 +38,13 @@ The architecture follows a stateless application tier backed by a relational dat
 | Metrics | RPS, latency percentiles, cache hit ratio, DB latency. |
 | Structured Logs | Request tracing and operational debugging. |
 
+## 2.1 Deployment Model and Docker Compose Role
+
+- **Local development**: Docker Compose is the default runtime for backend app + PostgreSQL (+ Redis in v2).
+- **Single-host production runtime**: Docker Compose orchestrates backend containers on EC2 (Nginx, app, PgBouncer, PostgreSQL, Redis v2, observability sidecars if enabled).
+- **Frontend boundary**: Angular frontend hosting is outside Compose (CloudFront + S3), per ADR decisions.
+- **Out of scope for Compose**: multi-node orchestration, autoscaling control planes, and cloud infrastructure provisioning.
+
 ---
 
 ## 3) Data Flow
@@ -44,7 +52,7 @@ The architecture follows a stateless application tier backed by a relational dat
 ### Write Path (Create Short URL)
 
 1. Client sends `POST /api/urls` with original URL and optional expiry.
-2. Request passes through LB → Nginx → App.
+2. Request passes through Route53 → CloudFront (API) → Nginx → App.
 3. App validates input (URL format, length).
 4. App generates `short_code` via DB sequence + Base62 encoding.
 5. App writes mapping to PostgreSQL.
@@ -54,7 +62,7 @@ The architecture follows a stateless application tier backed by a relational dat
 ### Read Path (Redirect)
 
 1. Client accesses `GET /<short_code>`.
-2. Request passes through LB → Nginx → App.
+2. Request passes through Route53 → CloudFront (API) → Nginx → App.
 3. (v2) App checks Redis cache first.
 4. On cache miss: App queries PostgreSQL by `short_code`.
 5. App checks expiry and deletion status.
@@ -73,14 +81,14 @@ The architecture follows a stateless application tier backed by a relational dat
 | App crash | Partial 5xx errors | Multiple instances, health checks, auto-restart |
 | Nginx/TLS cert expired | Full HTTPS outage | Automated cert renewal (Let's Encrypt), monitoring |
 | DNS resolution failure | Full outage | Correct records, sensible TTL, resolver caching |
-| LB misroute | Partial outage | Health checks, autoscaling policies |
+| CloudFront behavior misconfiguration | Partial/full routing outage | Versioned config rollout, staged validation, and rollback |
 
 ---
 
 ## 5) Scaling Strategy
 
 ### v1
-- **App tier**: Horizontal scaling behind load balancer.
+- **App tier**: Horizontal scaling within the Docker Compose backend runtime boundary (single-host baseline).
 - **DB tier**: Single primary, vertically scaled. Adequate for 1K avg QPS.
 - **No caching**: At 5K QPS peak, a properly indexed PostgreSQL instance (in-memory index + connection pooling) can sustain redirect lookups without requiring a cache tier.
 

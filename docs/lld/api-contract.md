@@ -231,7 +231,7 @@ Both expired links (`expires_at` in the past) and soft-deleted links (`is_delete
 
 **`GET /actuator/health`**
 
-Returns the overall health status of the application. Provided by Spring Boot Actuator. Used by Docker health checks and load balancer probes.
+Returns the overall health status of the application. Provided by Spring Boot Actuator. Used by Docker/container health checks and backend runtime probes behind CloudFront + Nginx.
 
 #### Response
 
