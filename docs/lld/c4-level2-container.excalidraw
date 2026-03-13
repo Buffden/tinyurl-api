@@ -456,8 +456,8 @@
         "type": 2
       },
       "seed": 458289626,
-      "version": 719,
-      "versionNonce": 1826274118,
+      "version": 720,
+      "versionNonce": 504678543,
       "isDeleted": false,
       "boundElements": [
         {
@@ -475,9 +475,13 @@
         {
           "id": "he9CFo5JVGSJqld7VEWdL",
           "type": "arrow"
+        },
+        {
+          "id": "o9vNTQyb-BaJ56gW5iiYO",
+          "type": "arrow"
         }
       ],
-      "updated": 1773363200528,
+      "updated": 1773443726136,
       "link": null,
       "locked": false
     },
@@ -3874,11 +3878,16 @@
       "groupIds": [],
       "roundness": null,
       "seed": 92526234,
-      "version": 1442,
-      "versionNonce": 731576858,
+      "version": 1443,
+      "versionNonce": 1580039329,
       "isDeleted": false,
-      "boundElements": [],
-      "updated": 1773363200537,
+      "boundElements": [
+        {
+          "id": "o9vNTQyb-BaJ56gW5iiYO",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1773443723707,
       "link": null,
       "locked": false,
       "text": "DNS Route53\n(tinyurl.buffden.com)",
@@ -3902,7 +3911,7 @@
       "width": 0,
       "height": 131.8385271478502,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#2f9e44",
       "backgroundColor": "transparent",
       "fillStyle": "hachure",
       "strokeWidth": 2,
@@ -3912,8 +3921,8 @@
       "groupIds": [],
       "roundness": null,
       "seed": 516027226,
-      "version": 6967,
-      "versionNonce": 1625497242,
+      "version": 6969,
+      "versionNonce": 75456591,
       "isDeleted": false,
       "boundElements": [
         {
@@ -3921,7 +3930,7 @@
           "type": "text"
         }
       ],
-      "updated": 1773363200537,
+      "updated": 1773443740760,
       "link": null,
       "locked": false,
       "points": [
@@ -3969,12 +3978,12 @@
     {
       "id": "ojREpVH5TAjbIB_qr3tMT",
       "type": "text",
-      "x": 1362.1974814515847,
-      "y": -81.65408675415932,
-      "width": 98.19192504882812,
+      "x": 1828.9956814101956,
+      "y": 347.4922923433583,
+      "width": 131.18389892578125,
       "height": 20,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#2f9e44",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 2,
@@ -3986,11 +3995,11 @@
       "index": "b1q",
       "roundness": null,
       "seed": 1268676634,
-      "version": 154,
-      "versionNonce": 1294509786,
+      "version": 157,
+      "versionNonce": 232837153,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773363200537,
+      "updated": 1773443740760,
       "link": null,
       "locked": false,
       "text": "HTTPS requests",
@@ -4630,6 +4639,156 @@
       "verticalAlign": "middle",
       "containerId": "ytuv31XfoeyRe5YzAAC9O",
       "originalText": "S3 Angular SPA\nstatic assets / UI",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "o9vNTQyb-BaJ56gW5iiYO",
+      "type": "arrow",
+      "index": "b24",
+      "frameId": null,
+      "x": 1844.6876308730862,
+      "y": 458.3115559172834,
+      "width": 98.39588552600276,
+      "height": 485.4392234261919,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "hachure",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "roundness": null,
+      "seed": 1380722383,
+      "version": 7308,
+      "versionNonce": 58387585,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "id": "jvG9xgevyqppLV6lHnxPz",
+          "type": "text"
+        }
+      ],
+      "updated": 1773443736888,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -87.70975910830134,
+          0
+        ],
+        [
+          -87.70975910830134,
+          -181.6075402971636
+        ],
+        [
+          -91.97583883634911,
+          -181.6075402971636
+        ],
+        [
+          -91.97583883634911,
+          -485.4392234261919
+        ],
+        [
+          6.4200466896536454,
+          -485.4392234261919
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "oeICI_pW2ybP5oKCNA7E8",
+        "fixedPoint": [
+          -0.05555555555555555,
+          0.49833333333333296
+        ],
+        "focus": 0,
+        "gap": 0
+      },
+      "endBinding": {
+        "elementId": "-r5awZZpmcJ6nKZK80t-h",
+        "fixedPoint": [
+          -0.19497574695847827,
+          0.2765624999999997
+        ],
+        "focus": 0,
+        "gap": 0
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "label": {
+        "containerId": "arr-user-dns",
+        "text": "Resolve\ndomain",
+        "fontSize": 11,
+        "fontFamily": 5
+      },
+      "elbowed": true,
+      "fixedSegments": [
+        {
+          "index": 2,
+          "start": [
+            -87.70975910830134,
+            0
+          ],
+          "end": [
+            -87.70975910830134,
+            -181.6075402971636
+          ]
+        },
+        {
+          "index": 4,
+          "start": [
+            -91.97583883634911,
+            -181.6075402971636
+          ],
+          "end": [
+            -91.97583883634911,
+            -485.4392234261919
+          ]
+        }
+      ],
+      "startIsSpecial": false,
+      "endIsSpecial": false
+    },
+    {
+      "id": "jvG9xgevyqppLV6lHnxPz",
+      "type": "text",
+      "x": 1618.7889765070104,
+      "y": 186.70401562011978,
+      "width": 119.00790405273438,
+      "height": 180,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "b25",
+      "roundness": null,
+      "seed": 249328879,
+      "version": 168,
+      "versionNonce": 1885088065,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1773443720042,
+      "link": null,
+      "locked": false,
+      "text": "Local DNS \ncache check\n\nOR\n\nRecursive DNS\nresolver (ISP /\nGoogle DNS)\n",
+      "fontSize": 16,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "o9vNTQyb-BaJ56gW5iiYO",
+      "originalText": "Local DNS \ncache check\n\nOR\n\nRecursive DNS resolver (ISP / Google DNS)\n",
       "autoResize": true,
       "lineHeight": 1.25
     }

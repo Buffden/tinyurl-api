@@ -3,6 +3,8 @@
 > Architecture and database design documentation for TinyURL (`tinyurl.buffden.com`).
 > Single-region deployment, evolving from v1 (DB-only) → v2 (Cache + Abuse Safety + Reliability).
 
+Runtime model note: Docker Compose is the backend orchestrator for local and single-host EC2 runtime; frontend delivery is handled separately via CloudFront + S3.
+
 ---
 
 ## Contents
