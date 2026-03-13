@@ -1,6 +1,6 @@
 # Threat Model
 
-> Security analysis for TinyURL. Identifies threats, attack surfaces, and mitigations across the system. Referenced by Phase 8 (Hardening) of the [Implementation Plan](../IMPLEMENTATION_PLAN.md).
+> Security analysis for TinyURL. Identifies threats, attack surfaces, and mitigations across the system. Referenced by Phase 8 (Hardening) of the [Implementation Plan](../implementation/IMPLEMENTATION_PLAN.md).
 
 ---
 
