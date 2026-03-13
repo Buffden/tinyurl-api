@@ -14,8 +14,8 @@
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
-        "strokeColor": "#2f9e44",
-        "backgroundColor": "#d3f9d8",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
       "roughness": 0,
       "opacity": 100,
       "groupIds": [],
@@ -56,8 +56,8 @@
       "strokeStyle": "solid",
       "roughness": 0,
       "opacity": 100,
-        "text": "CloudFront\n(API Dist.)",
-        "fontSize": 13,
+      "groupIds": [],
+      "roundness": {
         "type": 3
       },
       "seed": 4004,
