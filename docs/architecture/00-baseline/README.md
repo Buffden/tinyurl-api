@@ -92,6 +92,7 @@ These decisions are locked before v1 implementation begins. Changing them requir
 | Scaling approach | Horizontal at app layer; single primary DB | [ADR-002](adr/ADR-002-scaling-approach.md) |
 | Redirect status code | 301 if no explicit expiry; 302 if explicit expiry set | [ADR-003](adr/ADR-003-redirect-status-code.md) |
 | Expired / deleted link response | HTTP 410 (existed, now gone); HTTP 404 for unknown codes | [ADR-004](adr/ADR-004-expiration-policy.md) |
+| Frontend hosting | Angular SPA static assets on CDN + object storage; API remains on backend runtime | [ADR-006](adr/ADR-006-frontend-hosting-cdn.md) |
 
 ---
 
@@ -156,3 +157,4 @@ See [v2/url-shortener-v2.md](v2/url-shortener-v2.md) and [v2/url-shortener-v2-hl
 | [adr/ADR-003](adr/ADR-003-redirect-status-code.md) | Redirect status: 301 vs 302 based on expiry intent |
 | [adr/ADR-004](adr/ADR-004-expiration-policy.md) | Expiration: 180-day default, HTTP 410 for expired/deleted, HTTP 404 for unknown |
 | [adr/ADR-005](adr/ADR-005-technology-stack.md) | Technology stack: language, framework, DB driver, Redis client, migrations |
+| [adr/ADR-006](adr/ADR-006-frontend-hosting-cdn.md) | Frontend hosting: Angular SPA on CDN + object storage with API path routing |
