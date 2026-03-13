@@ -150,7 +150,7 @@ E2E browser tests for the Angular UI. v1 has two screens. Manual testing is suff
 ### Containerisation
 
 **Docker (multi-stage build)**
-The backend is packaged as a Docker image using a multi-stage build: a `gradle build` stage produces the fat JAR, then an `eclipse-temurin:21-jre-alpine` runtime stage copies it in. This keeps the final image small (target: < 150 MB). The Angular build output (`dist/`) is copied into the Nginx image separately.
+The backend is packaged as a Docker image using a multi-stage build: a `gradle build` stage produces the fat JAR, then an `eclipse-temurin:21-jre-alpine` runtime stage copies it in. This keeps the final image small (target: < 150 MB). Frontend build artifacts are deployed separately to CDN + object storage as defined in [ADR-006](ADR-006-frontend-hosting-cdn.md).
 
 **Docker Compose**
 Used for two purposes: (1) local development environment (PostgreSQL + app in one command), and (2) local integration test runs matching the CI environment. In v1, Docker Compose is also the production deployment model — one `docker-compose.yml` on the server.
@@ -178,7 +178,9 @@ GHCR is free for public repositories and natively integrated with GitHub Actions
 ### Infrastructure
 
 **Nginx + Let's Encrypt**
-Nginx serves two roles: (1) TLS termination and reverse proxy to the Spring Boot app, and (2) serving the Angular SPA as static files. Let's Encrypt with Certbot provides free automated TLS certificate provisioning and renewal. No cost, no manual cert rotation.
+Nginx serves TLS termination and reverse proxy to the Spring Boot app. Let's Encrypt with Certbot provides free automated TLS certificate provisioning and renewal. No cost, no manual cert rotation.
+
+Frontend static hosting strategy is recorded in [ADR-006](ADR-006-frontend-hosting-cdn.md): Angular SPA assets are served from CDN + object storage rather than from the backend Nginx container.
 
 ---
 
@@ -187,6 +189,6 @@ Nginx serves two roles: (1) TLS termination and reverse proxy to the Spring Boot
 - `spring.threads.virtual.enabled=true` must be set explicitly in `application.yml`.
 - Flyway migration files are append-only — never modify a version once it has run.
 - Testcontainers requires Docker running locally and on CI (GitHub-hosted `ubuntu-latest` includes Docker by default).
-- Angular `dist/` output is copied into the Nginx Docker image at build time — two separate images: one for the app, one for the frontend.
+- Angular `dist/` output is deployed to CDN + object storage as static assets (see [ADR-006](ADR-006-frontend-hosting-cdn.md)).
 - SpringDoc must be disabled in production: `springdoc.api-docs.enabled=false` in `application-prod.yml`.
-- No CORS configuration is needed. Angular is served by Nginx and all API calls are proxied through Nginx to the Spring Boot backend — both are on the same origin at all times, including local Docker Compose development.
+- CORS must be configured appropriately if frontend and API are served from different domains. If both are served under one domain with path-based routing (`/api/*` to backend), CORS can remain unnecessary.
