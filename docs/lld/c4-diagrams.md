@@ -10,8 +10,8 @@
 
 | # | Level | File | Scope |
 |---|-------|------|-------|
-| 1 | System Context | [c4-level1-system-context.excalidraw](c4-level1-system-context.excalidraw) | TinyURL as a black box — external actors (End User) and external systems (DNS) |
-| 2 | Container | [c4-level2-container.excalidraw](c4-level2-container.excalidraw) | All deployable units — Nginx, Load Balancer, URL Shortener App, Redis, PgBouncer, PostgreSQL, Observability |
+| 1 | System Context | [c4-level1-system-context.excalidraw](c4-level1-system-context.excalidraw) | TinyURL as a black box — external actors (End User) and edge/origin systems (CloudFront, S3) |
+| 2 | Container | [c4-level2-container.excalidraw](c4-level2-container.excalidraw) | All deployable/runtime units — CloudFront CDN, S3 SPA, Nginx, URL Shortener App, Redis, PgBouncer, PostgreSQL, Observability |
 | 3 | Component | [c4-level3-component.excalidraw](c4-level3-component.excalidraw) | Internals of the Spring Boot application — DispatcherServlet, middleware chain, controllers, services, repositories |
 | 4 | Code | [c4-level4-code.excalidraw](c4-level4-code.excalidraw) | Java interfaces, classes, fields, methods, and the full dependency graph across 6 packages |
 | 5 | Deployment | [c4-deployment.excalidraw](c4-deployment.excalidraw) | Docker Compose topology on EC2 — images, ports, volumes, health checks, and AWS SSM secrets flow |
@@ -26,12 +26,12 @@ All five diagrams share a consistent palette so elements are instantly recogniza
 
 | Color | Stroke | Background | Represents | Example |
 |-------|--------|------------|------------|---------|
-| Green | `#2f9e44` | `#d3f9d8` | Entry / Proxy layer | Nginx, Load Balancer |
+| Green | `#2f9e44` | `#d3f9d8` | Entry / Proxy layer | Nginx |
 | Orange | `#e67700` | `#fff9db` | Application / Cache tier | URL Shortener App, Redis, UrlService |
 | Red | `#c92a2a` | `#ffe3e3` | Data tier | PostgreSQL, PgBouncer, UrlRepository |
 | Blue | `#1971c2` | `#dbe4ff` | System boundary / Router / Handlers | TinyURL System box, DispatcherServlet, Controllers |
 | Grey | `#868e96` | `#dee2e6` | External systems / DTOs / Utilities / Observability | DNS, Prometheus, Base62Encoder, ErrorResponse |
-| Purple | `#6741d9` | `#e5dbff` | AWS Managed Services | SSM Parameter Store |
+| Purple | `#6741d9` | `#e5dbff` | AWS Managed Services | CloudFront, S3 Bucket, SSM Parameter Store |
 
 ### Arrow Conventions
 
@@ -65,21 +65,24 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 |---------|-------|-------|-------------|
 | End User | Person (grey ellipse) | Grey | Creates short URLs and accesses redirects via browser |
 | TinyURL System | Software System (blue rect) | Blue | Accepts long URLs, generates unique short codes, and redirects users to original URLs with low latency (<100 ms P95) |
-| DNS | External System (grey ellipse) | Grey | Resolves `tinyurl.buffden.com` to the load balancer IP |
+| CloudFront CDN | External System (purple rect) | Purple | Edge entry for both API and redirect traffic; routes SPA and API paths to correct origins |
+| S3 Bucket | External System (green rect) | Green | Stores built Angular SPA static assets as origin content |
 
-### Interactions (3 arrows)
+### Interactions (4 arrows)
 
 | From → To | Label | Style |
 |-----------|-------|-------|
-| End User → TinyURL System | `HTTPS requests` | Solid |
-| TinyURL System → DNS | `Resolves domain` | Dashed |
+| End User → CloudFront CDN | `HTTPS requests` | Solid |
+| CloudFront CDN → TinyURL System | `API calls + redirect requests` | Solid |
+| CloudFront CDN → S3 Bucket | `Origin fetch (SPA assets)` | Solid |
+| TinyURL System → End User | `301 Redirect` | Solid |
 
 ### Key Takeaways
 
-- TinyURL is a **stateless web service** exposed to the public internet.
-- The only external dependency at this level is **DNS resolution**.
-- All traffic enters over **HTTPS**.
-- No database, cache, or infrastructure details are visible — that's the point of L1.
+- TinyURL remains a **stateless web service** exposed to the public internet.
+- Public traffic enters through **CloudFront**, not directly to backend containers.
+- SPA assets are served from **S3 through CloudFront**; API and redirect traffic is routed to backend.
+- No database, cache, or host-level deployment details are visible — that's the point of L1.
 
 ---
 
@@ -93,8 +96,10 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 | Tier | Colour | Containers |
 |------|--------|------------|
-| **Public Internet** | Grey | User, DNS (`tinyurl.buffden.com`) |
-| **Entry Layer** | Green | Load Balancer (AWS ALB — L4/L7), Nginx (TLS termination + reverse proxy) |
+| **Public Internet** | Grey | User, DNS Route53 (`tinyurl.buffden.com`) |
+| **CDN / Edge Layer** | Purple | CloudFront CDN |
+| **Frontend Origin** | Green | S3 Angular SPA static assets / UI |
+| **Entry Layer** | Green | Nginx (TLS termination + reverse proxy) |
 | **Application Tier** | Orange | URL Shortener App (stateless instances + token-bucket rate limiting) |
 | **Cache Layer** | Orange | Redis (cache-aside + negative caching) — **v2 only** |
 | **Data Tier** | Red | PgBouncer (transaction pooling, connection-exhaustion guard), PostgreSQL Primary DB (`url_mappings` table, sequence-based ID, WAL archiving) |
@@ -106,8 +111,9 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 | From → To | Label |
 |-----------|-------|
-| User → Load Balancer | `POST /api/urls` (Write) |
-| Load Balancer → Nginx | Forward |
+| User → DNS Route53 | `Resolve DNS` |
+| User → CloudFront CDN | `HTTPS requests` |
+| CloudFront CDN → Nginx | `/api/*` |
 | Nginx → URL Shortener App | Write |
 | URL Shortener App → PgBouncer → PostgreSQL | `INSERT mapping` |
 | PostgreSQL → URL Shortener App | `Confirm Write` |
@@ -117,8 +123,9 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 | From → To | Label |
 |-----------|-------|
-| User → Load Balancer | `GET /{code}` (Read) |
-| Load Balancer → Nginx | Forward |
+| User → DNS Route53 | `Resolve DNS` |
+| User → CloudFront CDN | `HTTPS requests` |
+| CloudFront CDN → Nginx | `/{short_code}` |
 | Nginx → URL Shortener App | Read |
 | URL Shortener App → Redis | `Lookup short_code` |
 | Redis → URL Shortener App | `Cache hit` or `NULL (negative cache)` |
@@ -126,6 +133,14 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 | PostgreSQL → URL Shortener App | `Return Mapping` |
 | URL Shortener App → Redis | `Cache populate (TTL)` or `stores NULL` |
 | URL Shortener App → User | `HTTP 301/302 Redirect` or `HTTP 404` |
+
+**SPA Path (Frontend):**
+
+| From → To | Label |
+|-----------|-------|
+| User → DNS Route53 | `Resolve DNS` |
+| User → CloudFront CDN | `HTTPS requests` |
+| CloudFront CDN → S3 Angular SPA | `/*` |
 
 **Observability:**
 
@@ -136,7 +151,8 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 ### Key Takeaways
 
-- The app is **stateless** — horizontal scaling is trivial (add more instances behind the LB).
+- The app is **stateless** — horizontal scaling is trivial (add more instances behind Nginx origin).
+- CloudFront is the first hop for both API and redirect traffic; S3 serves SPA assets via CDN.
 - **PgBouncer** sits between the app and PostgreSQL to cap connections under spike traffic.
 - **Redis is only present in v2**; v1 goes straight from app to DB on every read.
 - Observability is a sidecar concern — its failure **does not** affect the write/read path.
@@ -352,13 +368,18 @@ The app fetches secrets at startup via `GetParametersByPath` using the EC2 insta
 
 **Spring Boot integration:** `spring-cloud-aws-starter-parameter-store` auto-resolves properties from SSM at boot time through `spring.config.import: aws-parameterstore:/tinyurl/prod/`.
 
-### Network Topology (8 arrows)
+### Network Topology (11 arrows)
 
 ```
 Internet
   │
-  │ HTTPS :443
+  │ HTTPS — tinyurl.buffden.com / app.tinyurl.buffden.com
   ▼
+CloudFront (API + SPA distributions)
+  │
+  ├── API dist ── proxy :443 ──▶ nginx
+  └── SPA dist ── OAC fetch ───▶ S3 Bucket
+  
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  Docker Host (EC2)                                                           │
 │                                                                              │
@@ -390,7 +411,8 @@ Internet
 
 | From → To | Arrow Label | Style |
 |-----------|-------------|-------|
-| Internet → nginx | `HTTPS :443` | Blue solid |
+| Internet → CloudFront Distribution (API) | `HTTPS — tinyurl.buffden.com` | Blue solid |
+| CloudFront Distribution (API) → nginx | `proxy :443` | Blue solid |
 | nginx → app | `proxy_pass :8080` | Blue solid |
 | app → pgbouncer | `HikariCP → :6432` | Red solid |
 | app → redis *(v2)* | `Lettuce :6379 (v2)` | Orange dashed |
@@ -398,10 +420,13 @@ Internet
 | prometheus → app | `scrape /metrics` | Grey dashed |
 | flyway → postgres | `DDL :5432` | Grey dashed |
 | app → SSM Parameter Store | `GetParametersByPath (IAM Role)` | Purple dashed |
+| Internet → CloudFront Distribution (SPA) | `HTTPS — app.tinyurl.buffden.com` | Blue solid |
+| CloudFront Distribution (SPA) → S3 Bucket | `OAC fetch` | Purple dashed |
 
 ### Key Takeaways
 
-- Only **nginx** exposes ports to the host (`80`, `443`). All other services communicate on the internal `tinyurl-net` bridge network.
+- Public entry is **CloudFront-first** (ADR-006): API distribution forwards to Nginx; SPA distribution fetches from S3 via OAC.
+- Only **nginx** exposes ports to the host (`80`, `443`). All other runtime services communicate on the internal `tinyurl-net` bridge network.
 - **PgBouncer** prevents connection exhaustion — the app connects via HikariCP to PgBouncer `:6432`, never directly to PostgreSQL.
 - **Flyway** runs once on startup (`restart: on-failure`) and applies DDL migrations via JDBC.
 - **Redis** is only present in v2 — the compose file can omit it entirely for v1.
