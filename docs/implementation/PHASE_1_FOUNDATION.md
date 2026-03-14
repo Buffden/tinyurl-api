@@ -122,7 +122,7 @@ References:
 
 Deliverables:
 
-- `.github/workflows/ci.yml`
+- `.github/workflows/ci-workflows.yml`
 - passing checks for compile + tests
 
 ## Definition of Done
