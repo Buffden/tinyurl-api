@@ -15,6 +15,10 @@ target/
 build/
 dist/
 out/
+.gradle/
+
+# Spring scaffold helper docs
+tinyurl/HELP.md
 
 # Dependency directories
 node_modules/
