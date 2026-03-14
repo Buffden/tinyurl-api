@@ -1,0 +1,83 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: tinyurl-nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    networks:
+      - public
+      - app_internal
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./tinyurl
+      dockerfile: Dockerfile
+    container_name: tinyurl-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tinyurl
+      SPRING_DATASOURCE_USERNAME: tinyurl
+      SPRING_DATASOURCE_PASSWORD: tinyurl
+      SERVER_PORT: 8080
+    expose:
+      - "8080"
+    networks:
+      - app_internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: tinyurl-postgres
+    environment:
+      POSTGRES_DB: tinyurl
+      POSTGRES_USER: tinyurl
+      POSTGRES_PASSWORD: tinyurl
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - app_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tinyurl -d tinyurl"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  public:
+  app_internal:
+    internal: true
+
+
