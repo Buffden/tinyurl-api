@@ -25,3 +25,8 @@ management:
       exposure:
         include: health
 
+tinyurl:
+  base-url: ${TINYURL_BASE_URL:http://localhost}
+  default-expiry-days: ${TINYURL_DEFAULT_EXPIRY_DAYS:180}
+  short-code-min-length: ${TINYURL_SHORT_CODE_MIN_LENGTH:6}
+
