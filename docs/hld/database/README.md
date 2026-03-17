@@ -46,3 +46,7 @@ The database design is split by version to match the rest of the architecture do
 - Start with [v1/database-design.md](v1/database-design.md) for the minimal production baseline.
 - Use [v2/database-design.md](v2/database-design.md) when reviewing the scaled design with cache-aware and abuse-control additions.
 - When comparing versions, treat v2 as an evolution of v1 rather than an unrelated redesign.
+
+## Operations and Migration Notes
+
+- [flyway-migration-primer.md](flyway-migration-primer.md): generic Flyway checksum concept, migration lifecycle stages, and mismatch handling.
