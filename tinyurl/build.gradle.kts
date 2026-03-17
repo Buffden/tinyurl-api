@@ -6,7 +6,7 @@ plugins {
 
 group = "com.tinyurl"
 version = "0.0.1-SNAPSHOT"
-description = "Demo project for Spring Boot"
+description = "TinyURL Spring Boot service for URL shortening"
 
 java {
 	toolchain {
