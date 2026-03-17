@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS url_mappings (
+CREATE TABLE url_mappings (
     id            BIGSERIAL   NOT NULL,
     short_code    VARCHAR(32) NOT NULL,
     original_url  TEXT        NOT NULL,
