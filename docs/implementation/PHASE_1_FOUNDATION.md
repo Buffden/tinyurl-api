@@ -139,8 +139,8 @@ Phase 1 is complete only when all criteria below are true:
 
 ```bash
 docker compose up -d
-./gradlew clean test
-./gradlew bootRun
+./tinyurl/gradlew clean test
+./tinyurl/gradlew bootRun
 curl http://localhost:8080/actuator/health
 ```
 
