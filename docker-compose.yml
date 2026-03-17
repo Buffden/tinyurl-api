@@ -30,8 +30,8 @@ services:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tinyurl
-      SPRING_DATASOURCE_USERNAME: tinyurl
-      SPRING_DATASOURCE_PASSWORD: tinyurl
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-tinyurl}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-tinyurl}
       SERVER_PORT: 8080
     expose:
       - "8080"
@@ -49,9 +49,9 @@ services:
     image: postgres:16-alpine
     container_name: tinyurl-postgres
     environment:
-      POSTGRES_DB: tinyurl
-      POSTGRES_USER: tinyurl
-      POSTGRES_PASSWORD: tinyurl
+      POSTGRES_DB: ${POSTGRES_DB:-tinyurl}
+      POSTGRES_USER: ${POSTGRES_USER:-tinyurl}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tinyurl}
       PGDATA: /var/lib/postgresql/data/pgdata
     command:
       - postgres
@@ -65,7 +65,7 @@ services:
     networks:
       - app_internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tinyurl -d tinyurl"]
+      test: ["CMD-SHELL", "pg_isready -U \"${POSTGRES_USER:-tinyurl}\" -d \"${POSTGRES_DB:-tinyurl}\""]
       interval: 10s
       timeout: 5s
       retries: 5
