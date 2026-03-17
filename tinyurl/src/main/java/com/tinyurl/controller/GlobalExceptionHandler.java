@@ -3,6 +3,8 @@ package com.tinyurl.controller;
 import com.tinyurl.dto.ErrorResponse;
 import com.tinyurl.exception.GoneException;
 import com.tinyurl.exception.NotFoundException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.persistence.PersistenceException;
 import org.springframework.dao.DataAccessException;
@@ -17,6 +19,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private final MeterRegistry meterRegistry;
+
+    public GlobalExceptionHandler(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         String code = "INVALID_REQUEST";
@@ -24,11 +32,13 @@ public class GlobalExceptionHandler {
         if (fieldError != null && fieldError.getDefaultMessage() != null) {
             code = fieldError.getDefaultMessage();
         }
+        incrementErrorMetric(HttpStatus.BAD_REQUEST, code);
         return ResponseEntity.badRequest().body(new ErrorResponse(code, messageForCode(code)));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        incrementErrorMetric(HttpStatus.BAD_REQUEST, "INVALID_URL");
         return ResponseEntity.badRequest()
             .body(new ErrorResponse("INVALID_URL", messageForCode("INVALID_URL")));
     }
@@ -39,6 +49,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = "INVALID_EXPIRY".equals(code) || "INVALID_URL".equals(code)
             ? HttpStatus.BAD_REQUEST
             : HttpStatus.INTERNAL_SERVER_ERROR;
+        incrementErrorMetric(status, code);
         return ResponseEntity.status(status).body(new ErrorResponse(code, messageForCode(code)));
     }
 
@@ -46,6 +57,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleServiceUnavailable(Exception ex) {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Retry-After", "30");
+        incrementErrorMetric(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
             .headers(headers)
             .body(new ErrorResponse("SERVICE_UNAVAILABLE", "The service is temporarily unavailable. Please try again."));
@@ -53,20 +65,31 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException ex) {
+        incrementErrorMetric(HttpStatus.NOT_FOUND, "NOT_FOUND");
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(new ErrorResponse("NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(GoneException.class)
     public ResponseEntity<ErrorResponse> handleGone(GoneException ex) {
+        incrementErrorMetric(HttpStatus.GONE, "GONE");
         return ResponseEntity.status(HttpStatus.GONE)
             .body(new ErrorResponse("GONE", ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
+        incrementErrorMetric(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(new ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred. Please try again."));
+    }
+
+    private void incrementErrorMetric(HttpStatus status, String errorCode) {
+        Counter.builder("tinyurl.http.server.errors.total")
+            .tag("status", Integer.toString(status.value()))
+            .tag("error_code", errorCode)
+            .register(meterRegistry)
+            .increment();
     }
 
     private String messageForCode(String code) {

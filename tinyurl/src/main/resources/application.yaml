@@ -19,11 +19,25 @@ management:
     health:
       probes:
         enabled: true
-      show-details: when_authorized
+      show-components: always
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,db,diskSpace,ping
+        liveness:
+          include: livenessState,ping
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
 
 tinyurl:
   base-url: ${TINYURL_BASE_URL:http://localhost}
