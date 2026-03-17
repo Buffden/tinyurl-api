@@ -75,6 +75,12 @@ Tasks:
 - Define target alert thresholds (error and latency)
 - Document triage paths for common failures
 
+Reference baseline:
+
+- [PHASE_3_ALERT_BASELINE.md](PHASE_3_ALERT_BASELINE.md)
+- [PHASE_3_LOG_AGGREGATION_BASELINE.md](PHASE_3_LOG_AGGREGATION_BASELINE.md)
+- [PHASE_3_LOG_STORAGE_MIGRATION_LOKI_PROMTAIL_GRAFANA.md](PHASE_3_LOG_STORAGE_MIGRATION_LOKI_PROMTAIL_GRAFANA.md)
+
 ## Deliverables
 
 - Structured logs enabled and validated
