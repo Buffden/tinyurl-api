@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/tinyurl}
+    username: ${DB_USERNAME:tinyurl}
+    password: ${DB_PASSWORD:tinyurl}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+tinyurl:
+  base-url: ${TINYURL_BASE_URL:http://localhost}
+  default-expiry-days: ${TINYURL_DEFAULT_EXPIRY_DAYS:180}
+  short-code-min-length: ${TINYURL_SHORT_CODE_MIN_LENGTH:6}
+
