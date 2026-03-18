@@ -40,39 +40,7 @@ Implement and deploy a production-ready Angular Single Page Application (SPA) fo
 
 ### Component Structure
 
-```
-tinyurl-frontend/
-├── src/
-│   ├── app/
-│   │   ├── core/
-│   │   │   ├── services/
-│   │   │   │   ├── url.service.ts
-│   │   │   │   ├── api.service.ts
-│   │   │   │   └── error-handling.service.ts
-│   │   │   ├── guards/
-│   │   │   └── interceptors/
-│   │   │       └── api.interceptor.ts
-│   │   ├── shared/
-│   │   │   ├── components/
-│   │   │   ├── pipes/
-│   │   │   └── models/
-│   │   ├── features/
-│   │   │   ├── shorten/
-│   │   │   │   ├── shorten-url.component.ts
-│   │   │   │   ├── shorten-url.component.html
-│   │   │   │   └── shorten-url.component.css
-│   │   │   └── redirect/
-│   │   │       └── redirect.component.ts
-│   │   ├── layout/
-│   │   ├── app-routing.module.ts
-│   │   └── app.component.ts
-│   ├── assets/
-│   ├── styles/
-│   └── index.html
-├── angular.json
-├── tsconfig.json
-└── package.json
-```
+The app is organized under `src/app/` with four top-level directories: `core/` (singleton services, interceptors, models), `shared/` (reusable components and pipes), `features/shorten/` (the URL shortening form and results components), and `layout/` (navigation and footer). Each feature has its own module, component, and spec file. The `AppRoutingModule` lazy-loads `ShortenModule` at the root path `/`.
 
 ### Key Modules
 
@@ -110,26 +78,7 @@ tinyurl-frontend/
 - `src/app/core/interceptors/api.interceptor.ts` - Error handling + retry logic
 
 **Implementation:**
-```typescript
-// api.service.ts
-export class ApiService {
-  constructor(private http: HttpClient) {}
-  
-  shortenUrl(request: ShortenUrlRequest): Observable<CreateUrlResponse> {
-    return this.http.post<CreateUrlResponse>('/api/urls', request)
-      .pipe(
-        retry({ count: 2, delay: 1000 }),
-        timeout(10000),
-        catchError(this.handleError)
-      );
-  }
-  
-  resolveUrl(shortCode: string): Observable<RedirectResponse> {
-    // Client-side redirect resolution for analytics
-    return this.http.get<RedirectResponse>(`/api/urls/${shortCode}`);
-  }
-}
-```
+The `ApiService` wraps `HttpClient` and exposes a `createShortUrl(request)` method that posts to `/api/urls`. The `ApiInterceptor` attaches a generated `X-Correlation-Id` header on every outgoing request, maps 4xx/5xx errors to typed `ApiError` objects, and applies exponential backoff retry for 5xx and timeout errors (up to 3 attempts). Request timeout is set to 10 seconds via `RxJS timeout` operator.
 
 **Features:**
 - Centralized error handling (4xx, 5xx, timeout)
@@ -158,12 +107,7 @@ export class ApiService {
    - Share buttons (Twitter, LinkedIn, Email)
 
 3. **Route Configuration**
-   ```typescript
-   const routes: Routes = [
-     { path: '', component: ShortenComponent },
-     { path: '**', redirectTo: '' }
-   ];
-   ```
+   Define routes in `AppRoutingModule`: the root path `/` lazy-loads `ShortenModule` which renders `ShortenUrlComponent`. Add a wildcard `**` route that redirects to `/` so unknown paths fall back to the shortener. CloudFront and any local dev server must also be configured to return `index.html` for all 404 responses to support client-side routing.
 
 **SPA Routing Fallback:**
 - Issue: Direct access to `/app/*` routes should load `index.html` (SPA pattern)
@@ -225,26 +169,8 @@ export class ApiService {
 ### Step 6: Security Hardening
 
 **Content Security Policy (CSP):**
-```
-Content-Security-Policy: 
-  default-src 'self';
-  script-src 'self' 'nonce-{random}';
-  style-src 'self' 'nonce-{random}';
-  img-src 'self' data:;
-  font-src 'self';
-  connect-src 'self' api.tinyurl.buffden.com;
-  frame-ancestors 'none';
-```
 
 **CORS Configuration (Backend):**
-```yaml
-# application.yaml (Spring CORS)
-cors:
-  allowedOrigins: "https://tinyurl.buffden.com,https://www.tinyurl.buffden.com"
-  allowedMethods: "GET,POST,OPTIONS"
-  allowedHeaders: "Content-Type,X-Correlation-Id"
-  maxAge: 3600
-```
 
 **HTTP Security Headers:**
 - `X-Content-Type-Options: nosniff` - Prevent MIME sniffing
@@ -283,12 +209,7 @@ cors:
 ### Step 8: Build & Deployment Pipeline
 
 **Build:**
-```bash
-npm install
-npm run lint
-npm run test
-npm run build
-```
+Run `ng build --configuration production` to produce a minified, AOT-compiled output. This enables tree-shaking, removes dev-only code, and generates hashed filenames for cache busting. Set the `outputPath` in `angular.json` to `dist/tinyurl-frontend/`.
 
 **Output:**
 - `dist/tinyurl-frontend/` - Minified, optimized build
@@ -296,15 +217,7 @@ npm run build
 - Source maps stored separately (optional for PROD)
 
 **Deployment to S3:**
-```bash
-# Upload to S3 with versioning
-aws s3 sync dist/tinyurl-frontend/ s3://tinyurl-spa-prod --delete
-
-# Invalidate CloudFront cache
-aws cloudfront create-invalidation \
-  --distribution-id ${CLOUDFRONT_DIST_ID} \
-  --paths "/*"
-```
+After a production build, sync the `dist/tinyurl-frontend/` directory to the target S3 bucket using the AWS CLI (`aws s3 sync`). Set `index.html` with `Cache-Control: no-cache` so browsers always fetch the latest entry point. All other assets (JS/CSS chunks) can be set to a long cache TTL since they have hashed filenames. After upload, invalidate the CloudFront distribution for `/*` or at minimum `/index.html` to ensure CDN edge nodes serve the new version immediately.
 
 **Version Control:**
 - Add `dist/` to `.gitignore`
@@ -363,19 +276,10 @@ aws cloudfront create-invalidation \
 ## Verification Steps
 
 1. **Local Development:**
-   ```bash
-   ng serve --open
-   # Navigate to http://localhost:4200
-   # Form submission should call backend API
-   ```
+   - Run `ng serve` and open `http://localhost:4200`. The dev server proxies `/api/*` to the backend (configure `proxy.conf.json` pointing to `http://localhost:8080`). Submit a URL and verify a short link appears in the results component.
 
 2. **Production Build:**
-   ```bash
-   ng build --prod
-   npm run build:stats  # Verify bundle size
-   npm run test  # Run unit tests
-   npm run e2e  # Run E2E tests
-   ```
+   - Run `ng build --configuration production` and confirm the `dist/` output is under 500 KB gzipped. Check that no `console.log` statements appear in the built output and that source maps are excluded from the production bundle.
 
 3. **S3 + CloudFront Verification:**
    - Access SPA via CloudFront domain (should load index.html)

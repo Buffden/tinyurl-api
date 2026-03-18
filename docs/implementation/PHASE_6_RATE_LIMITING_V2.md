@@ -98,63 +98,7 @@ Tasks:
 ### Layer 1: Nginx Edge Rate Limiting
 
 **Nginx Configuration** (reverse proxy layer):
-
-```nginx
-# /etc/nginx/conf.d/rate-limiting.conf
-
-# Define rate limit zones per endpoint
-# Zone 1: Create endpoint (strict limit)
-limit_req_zone $binary_remote_addr zone=create_limit:10m rate=5r/m;
-
-# Zone 2: Redirect endpoint (generous limit)
-limit_req_zone $binary_remote_addr zone=redirect_limit:10m rate=200r/s;
-
-# Zone 3: Health endpoint (unlimited)
-limit_req_zone $binary_remote_addr zone=health_limit:10m rate=1000r/s;
-
-# How zone works:
-# - $binary_remote_addr = client IP (binary format, more efficient)
-# - zone=create_limit:10m = zone name + memory size for tracking (10MB = ~160k IPs)
-# - rate=5r/m = 5 requests per minute per IP
-
-server {
-    listen 443 ssl http2;
-    server_name tinyurl.buffden.com;
-    
-    # Create endpoint: strict rate limiting (5/min per IP)
-    location /api/urls {
-        limit_req zone=create_limit burst=10 nodelay;
-        # burst=10 allows short bursts without queuing
-        # nodelay = don't delay excess requests (reject instead)
-        
-        proxy_pass http://backend;
-        proxy_set_header X-Forwarded-For $remote_addr;
-    }
-    
-    # Redirect endpoint: permissive rate limiting (200/sec per IP)
-    location ~ ^/[a-zA-Z0-9]{6,8}$ {
-        limit_req zone=redirect_limit burst=50 nodelay;
-        
-        proxy_pass http://backend;
-        proxy_set_header X-Forwarded-For $remote_addr;
-    }
-    
-    # Health endpoint: no rate limit
-    location ~ ^/actuator/health {
-        limit_req zone=health_limit burst=1000 nodelay;
-        
-        proxy_pass http://backend;
-    }
-    
-    # 429 Too Many Requests response
-    error_page 429 /ratelimit.json;
-    location = /ratelimit.json {
-        internal;
-        default_type application/json;
-        return 429 '{"error":"Too Many Requests","status":429}';
-    }
-}
-```
+Define two `limit_req_zone` directives keyed on `$binary_remote_addr`: one for the create endpoint at 5 requests/minute, one for the redirect endpoint at 200 requests/second. Apply `limit_req` in the relevant `location` blocks with a burst buffer and `nodelay` so bursts are absorbed without queuing. Exclude `/actuator/health` from all rate-limit zones. Return a custom `429` status with a `Retry-After` header when limits are exceeded.
 
 **Why these values:**
 - Create: 5/min = ~1 per 12 seconds (prevent spam, allow legitimate users)
@@ -169,187 +113,21 @@ server {
 ### Layer 2: App-Level Token Bucket Rate Limiting
 
 **Redis-backed Distributed Rate Limiter**:
-
-```java
-@Component
-public class RateLimiterService {
-    private final StringRedisTemplate redisTemplate;
-    private final MeterRegistry meterRegistry;
-
-    // Define limits per endpoint
-    private static final Map<String, RateLimit> LIMITS = Map.of(
-        "create", new RateLimit(5, 60),        // 5 requests/minute
-        "create_custom", new RateLimit(2, 60), // 2 requests/minute (stricter for custom aliases)
-        "redirect", new RateLimit(200, 1)      // 200 requests/second
-    );
-
-    public RateLimitResult checkLimit(String endpoint, String clientIp) {
-        RateLimit limit = LIMITS.getOrDefault(endpoint, new RateLimit(1000, 1));
-        
-        String key = "limit:" + endpoint + ":" + clientIp;
-        String countKey = key + ":count";
-        String resetKey = key + ":reset";
-        
-        try {
-            // Use Lua script for atomic increment + TTL check
-            Long count = redisTemplate.execute(
-                new DefaultRedisScript<>(
-                    "local count = redis.call('INCR', KEYS[1]) " +
-                    "if count == 1 then " +
-                    "  redis.call('EXPIRE', KEYS[1], ARGV[1]) " +
-                    "end " +
-                    "return count",
-                    Long.class
-                ),
-                Arrays.asList(countKey),
-                String.valueOf(limit.windowSeconds)
-            );
-            
-            // Get remaining TTL for reset time
-            Long ttl = redisTemplate.getExpire(countKey, TimeUnit.SECONDS);
-            long resetTime = System.currentTimeMillis() + (ttl * 1000);
-            
-            boolean allowed = count <= limit.maxRequests;
-            
-            // Track metrics
-            Counter.builder("ratelimit.check")
-                .tag("endpoint", endpoint)
-                .tag("allowed", String.valueOf(allowed))
-                .register(meterRegistry)
-                .increment();
-                
-            if (!allowed) {
-                Counter.builder("ratelimit.exceeded")
-                    .tag("endpoint", endpoint)
-                    .register(meterRegistry)
-                    .increment();
-            }
-            
-            return new RateLimitResult(
-                allowed,
-                limit.maxRequests,
-                count,
-                limit.maxRequests - count, // remaining
-                resetTime,
-                (resetTime - System.currentTimeMillis()) / 1000 // seconds until reset
-            );
-        } catch (Exception e) {
-            log.error("Rate limit check failed for {}, allowing request (fail-open)", clientIp, e);
-            // Fail open: allow on error (don't block real users due to cache failure)
-            return new RateLimitResult(true, limit.maxRequests, 0, limit.maxRequests, 0, 0);
-        }
-    }
-
-    static class RateLimit {
-        int maxRequests;
-        int windowSeconds;
-        
-        RateLimit(int max, int window) {
-            this.maxRequests = max;
-            this.windowSeconds = window;
-        }
-    }
-}
-
-record RateLimitResult(
-    boolean allowed,
-    int limit,
-    long used,
-    long remaining,
-    long resetTime,
-    long retryAfterSeconds
-) {}
-```
+Use a Redis counter per `IP:endpoint` key with an atomic Lua script: increment the counter and set its TTL on the first request within the window. If the counter exceeds the configured limit, return `false` (rate limited). The TTL is the sliding window duration (e.g., 60 seconds for the create endpoint). Using a Lua script ensures the increment-and-check is atomic and race-safe across multiple app instances.
 
 **HTTP Interceptor to enforce limits**:
-
-```java
-@Component
-public class RateLimitInterceptor implements HandlerInterceptor {
-    private final RateLimiterService rateLimiter;
-
-    @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String clientIp = getClientIp(request);
-        String endpoint = getEndpointType(request);
-        
-        RateLimitResult result = rateLimiter.checkLimit(endpoint, clientIp);
-        
-        // Add rate limit headers to all responses
-        response.setHeader("X-RateLimit-Limit", String.valueOf(result.limit));
-        response.setHeader("X-RateLimit-Remaining", String.valueOf(result.remaining));
-        response.setHeader("X-RateLimit-Reset", String.valueOf(result.resetTime / 1000));
-        
-        if (!result.allowed) {
-            response.setHeader("Retry-After", String.valueOf(result.retryAfterSeconds));
-            response.setStatus(429);
-            response.setContentType("application/json");
-            
-            try {
-                response.getWriter().write("{\"error\":\"Too Many Requests\",\"retry_after\":" 
-                    + result.retryAfterSeconds + "}");
-            } catch (IOException e) {
-                log.error("Failed to write 429 response", e);
-            }
-            
-            return false; // Stop handler execution
-        }
-        
-        return true; // Continue to handler
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xForwarded = request.getHeader("X-Forwarded-For");
-        if (xForwarded != null && !xForwarded.isEmpty()) {
-            return xForwarded.split(",")[0].trim(); // First IP in chain
-        }
-        return request.getRemoteAddr();
-    }
-
-    private String getEndpointType(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        String method = request.getMethod();
-        
-        if (path.equals("/api/urls") && method.equals("POST")) {
-            // Check if custom alias (from body) - but can't easily do here, so use interceptor on controller
-            return "create";
-        } else if (method.equals("GET")) {
-            return "redirect";
-        }
-        return "default";
-    }
-}
-```
+Implement a Spring `HandlerInterceptor` that runs `preHandle` for all API requests. Extract the client IP from `X-Forwarded-For` (with fallback to `RemoteAddr`), determine the endpoint bucket, call the Redis rate limiter, and return a `429` response with `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `Retry-After` headers if the limit is exceeded.
 
 **Controller-level annotation** (for custom alias detection):
-
-```java
-@PostMapping("/api/urls")
-@RateLimited(endpoint = "create") // Default rate limit
-public ResponseEntity<CreateUrlResponse> create(@Valid @RequestBody CreateUrlRequest req) {
-    // If custom alias provided, use stricter limit
-    if (req.getCustomAlias() != null) {
-        // This would be enforced by controller interceptor or AOP
-        throw new RateLimitExceeded("Custom alias limit exceeded");
-    }
-    
-    return ResponseEntity.status(201).body(...);
-}
-```
+Add a custom `@RateLimit` annotation that can be placed on controller methods to specify a non-default limit (e.g., `2/min` for the custom alias path). The interceptor reads this annotation via `HandlerMethod` reflection to apply the stricter bucket instead of the endpoint default.
 
 ### Distributed Rate Limiting (Multi-Instance)
 
 **Problem**: If running multiple app instances, each instance has its own rate limit count, allowing 5x more requests across all instances.
 
-**Solution 1: Sticky Sessions** (Nginx)
-```nginx
-# Route requests from same IP to same backend instance
-upstream backend {
-    hash $binary_remote_addr consistent;  # Hash based on client IP
-    server app1:8080;
-    server app2:8080;
-}
-```
+**Solution 1: Sticky Sessions** (Nginx):
+Configure Nginx `ip_hash` directive to route the same client IP to the same upstream instance consistently. This ensures each instance's local counter reflects only that client's requests.
+
 **Pros**: Simple, no coordination needed  
 **Cons**: Uneven load distribution, connection persistence overhead
 
@@ -368,40 +146,7 @@ upstream backend {
 ### Exemptions & Whitelisting
 
 **Reserved IPs** (should not be rate-limited):
-
-```java
-@Configuration
-public class RateLimitConfig {
-    
-    private static final List<String> WHITELIST = Arrays.asList(
-        "127.0.0.1",           // Localhost
-        "::1",                 // IPv6 localhost
-        "10.0.0.0/8",         // Internal network (AWS VPC)
-        "169.254.0.0/16"      // AWS metadata service
-    );
-
-    @Bean
-    public IpAddressMatcher internalNetworkMatcher() {
-        long startIp = ipToLong("10.0.0.0");
-        long endIp = ipToLong("10.255.255.255");
-        return new IpAddressMatcher(startIp, endIp);
-    }
-
-    // Use in interceptor:
-    private boolean isWhitelisted(String clientIp) {
-        for (String whitelist : WHITELIST) {
-            if (clientIp.equals(whitelist)) {
-                return true;
-            }
-            // CIDR range check (simplified)
-            if (clientIp.startsWith("10.0")) {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-```
+Whitelist the RFC-1918 private ranges `10.0.0.0/8`, `172.16.0.0/12`, and `192.168.0.0/16` so internal health probes, load balancer checks, and inter-service calls are never throttled. Maintain the whitelist in application config so it can be updated without a code deploy.
 
 **Endpoint Exemptions**:
 - Health checks: `/actuator/health*` (always allowed)
@@ -420,31 +165,10 @@ public class RateLimitConfig {
 | `ratelimit.config.window_seconds` | Configured window per endpoint | Monitor for drift |
 
 **Prometheus Query Examples**:
-```prometheus
-# % of requests hitting rate limit
-rate(ratelimit.exceeded.total[5m]) / rate(ratelimit.check.total[5m])
-
-# Request rate by endpoint
-rate(http.server.requests.total[1m]) by (route)
-
-# Top IPs by request count (redis-based, custom metric)
-topk(10, rate(ratelimit.requests.total{endpoint="create"}[5m])) by (client_ip)
-```
+To monitor rejection rate, query `rate(ratelimit_exceeded_total[5m])` grouped by `endpoint`. To check Redis latency for rate limit checks, query `histogram_quantile(0.99, rate(ratelimit_check_duration_seconds_bucket[5m]))`. To detect sudden abuse bursts, alert when `rate(ratelimit_exceeded_total[1m]) > 100`.
 
 **Alerts**:
-```yaml
-- alert: RateLimitExceededSpike
-  expr: rate(ratelimit.exceeded.total[5m]) > 100
-  for: 2m
-  annotations:
-    summary: "Rate limit spike detected ({{$value}} requests/sec)"
-    
-- alert: RateLimitServiceDown
-  expr: up{job="rate-limiter"} == 0
-  for: 1m
-  annotations:
-    summary: "Rate limiter service down"
-```
+Configure two Prometheus alert rules: one that fires `WARNING` when the rejection rate exceeds 100 per minute on any endpoint (possible abuse), and one that fires `CRITICAL` when the Redis rate-limit check P99 latency exceeds 50ms (indicates Redis pressure that could degrade all API traffic).
 
 ---
 
