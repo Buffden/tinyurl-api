@@ -1,0 +1,7 @@
+# Production-specific configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        # Production: only expose health endpoint. Metrics/prometheus require separate admin port + authentication
+        include: health
