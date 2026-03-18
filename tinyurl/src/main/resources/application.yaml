@@ -19,8 +19,8 @@ management:
     health:
       probes:
         enabled: true
-      show-components: always
-      show-details: always
+      show-components: when_authorized
+      show-details: when_authorized
       group:
         readiness:
           include: readinessState,db,diskSpace,ping
@@ -29,6 +29,7 @@ management:
   endpoints:
     web:
       exposure:
+        # Default: expose metrics for dev/test. Restricted in production via application-prod.yaml
         include: health,metrics,prometheus
   metrics:
     tags:

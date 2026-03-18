@@ -85,11 +85,24 @@ public class GlobalExceptionHandler {
     }
 
     private void incrementErrorMetric(HttpStatus status, String errorCode) {
+        String normalizedCode = normalizeErrorCode(errorCode);
         Counter.builder("tinyurl.http.server.errors.total")
             .tag("status", Integer.toString(status.value()))
-            .tag("error_code", errorCode)
+            .tag("error_code", normalizedCode)
             .register(meterRegistry)
             .increment();
+    }
+
+    private String normalizeErrorCode(String errorCode) {
+        if (errorCode == null || errorCode.isBlank()) {
+            return "UNKNOWN";
+        }
+        // Map to bounded set of known error codes
+        return switch (errorCode) {
+            case "INVALID_URL", "INVALID_EXPIRY", "INVALID_REQUEST" -> errorCode;
+            case "SERVICE_UNAVAILABLE", "NOT_FOUND", "GONE", "INTERNAL_ERROR" -> errorCode;
+            default -> "UNKNOWN_ERROR";
+        };
     }
 
     private String messageForCode(String code) {

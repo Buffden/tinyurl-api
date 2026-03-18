@@ -51,43 +51,45 @@ public class RequestObservabilityFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             statusCode = response.getStatus();
         } finally {
-            String method = request.getMethod();
-            String route = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-            if (route == null || route.isBlank()) {
-                route = request.getRequestURI();
+            try {
+                String method = request.getMethod();
+                String route = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+                if (route == null || route.isBlank()) {
+                    route = "UNMAPPED";
+                }
+
+                String status = Integer.toString(statusCode);
+                String statusClass = (statusCode / 100) + "xx";
+                String outcome = statusCode >= 400 ? "error" : "success";
+
+                long durationNanos = System.nanoTime() - startNanos;
+                Timer.builder("tinyurl.http.server.request.duration")
+                    .tag("method", method)
+                    .tag("route", route)
+                    .tag("status", status)
+                    .register(meterRegistry)
+                    .record(durationNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+
+                Counter.builder("tinyurl.http.server.requests.total")
+                    .tag("method", method)
+                    .tag("route", route)
+                    .tag("status_class", statusClass)
+                    .tag("outcome", outcome)
+                    .register(meterRegistry)
+                    .increment();
+
+                log.info(
+                    "http_request method={} route={} status={} duration_ms={} client_ip={} user_agent={}",
+                    method,
+                    route,
+                    statusCode,
+                    durationNanos / 1_000_000,
+                    request.getRemoteAddr(),
+                    sanitize(request.getHeader("User-Agent"))
+                );
+            } finally {
+                MDC.remove(CORRELATION_ID_MDC_KEY);
             }
-
-            String status = Integer.toString(statusCode);
-            String statusClass = (statusCode / 100) + "xx";
-            String outcome = statusCode >= 400 ? "error" : "success";
-
-            double durationSeconds = (System.nanoTime() - startNanos) / 1_000_000_000.0;
-            Timer.builder("tinyurl.http.server.request.duration")
-                .tag("method", method)
-                .tag("route", route)
-                .tag("status", status)
-                .register(meterRegistry)
-                .record((long) (durationSeconds * 1_000_000_000L), java.util.concurrent.TimeUnit.NANOSECONDS);
-
-            Counter.builder("tinyurl.http.server.requests.total")
-                .tag("method", method)
-                .tag("route", route)
-                .tag("status_class", statusClass)
-                .tag("outcome", outcome)
-                .register(meterRegistry)
-                .increment();
-
-            log.info(
-                "http_request method={} route={} status={} duration_ms={} client_ip={} user_agent={}",
-                method,
-                route,
-                statusCode,
-                Math.round(durationSeconds * 1000),
-                request.getRemoteAddr(),
-                sanitize(request.getHeader("User-Agent"))
-            );
-
-            MDC.remove(CORRELATION_ID_MDC_KEY);
         }
     }
 
