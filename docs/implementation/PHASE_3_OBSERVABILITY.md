@@ -402,14 +402,6 @@ Tasks:
 - Create Grafana dashboard templates (post-phase)
 - Document cardinality control best practices
 
----
-
-Reference baseline:
-
-- [PHASE_3_ALERT_BASELINE.md](PHASE_3_ALERT_BASELINE.md)
-- [PHASE_3_LOG_AGGREGATION_BASELINE.md](PHASE_3_LOG_AGGREGATION_BASELINE.md)
-- [PHASE_3_LOG_STORAGE_MIGRATION_LOKI_PROMTAIL_GRAFANA.md](PHASE_3_LOG_STORAGE_MIGRATION_LOKI_PROMTAIL_GRAFANA.md)
-
 ## Deliverables
 
 - [x] Structured JSON logging enabled and validated
