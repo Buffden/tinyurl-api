@@ -11,11 +11,12 @@ This document defines the phased implementation plan for TinyURL. Each phase has
 | 1 | Foundation | Project scaffolding, CI/CD, database schema | None |
 | 2 | Core API (v1) | URL shortening and redirect — production-ready baseline | Phase 1 |
 | 3 | Observability | Logging, metrics, health checks, alerting | Phase 2 |
-| 4 | Cache Layer (v2) | Redis cache-aside for redirect path | Phase 2 |
-| 5 | Rate Limiting (v2) | Nginx and app-layer rate limiting | Phase 2 |
-| 6 | Custom Aliases (v2) | Feature-flagged custom alias support | Phase 2, Phase 4 |
-| 7 | Cleanup and Archival (v2) | Scheduled expiration cleanup and data archival | Phase 2 |
-| 8 | Hardening | Security review, load testing, documentation finalization | Phases 1-7 |
+| 4 | Frontend Implementation | Angular SPA, API client, S3 + CloudFront deployment | Phase 2, Phase 3 |
+| 5 | Cache Layer (v2) | Redis cache-aside for redirect path | Phase 2 |
+| 6 | Rate Limiting (v2) | Nginx and app-layer rate limiting | Phase 2 |
+| 7 | Custom Aliases (v2) | Feature-flagged custom alias support | Phase 2, Phase 5 |
+| 8 | Cleanup and Archival (v2) | Scheduled expiration cleanup and data archival | Phase 2 |
+| 9 | Hardening | Security review, load testing, documentation finalization | Phases 1-8 |
 
 ## Detailed Phase Files
 
@@ -24,11 +25,12 @@ This document defines the phased implementation plan for TinyURL. Each phase has
 | 1 | [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md) |
 | 2 | [PHASE_2_CORE_API_V1.md](PHASE_2_CORE_API_V1.md) |
 | 3 | [PHASE_3_OBSERVABILITY.md](PHASE_3_OBSERVABILITY.md) |
-| 4 | [PHASE_4_CACHE_LAYER_V2.md](PHASE_4_CACHE_LAYER_V2.md) |
-| 5 | [PHASE_5_RATE_LIMITING_V2.md](PHASE_5_RATE_LIMITING_V2.md) |
-| 6 | [PHASE_6_CUSTOM_ALIASES_V2.md](PHASE_6_CUSTOM_ALIASES_V2.md) |
-| 7 | [PHASE_7_CLEANUP_AND_ARCHIVAL_V2.md](PHASE_7_CLEANUP_AND_ARCHIVAL_V2.md) |
-| 8 | [PHASE_8_HARDENING.md](PHASE_8_HARDENING.md) |
+| 4 | [PHASE_4_FRONTEND_IMPLEMENTATION.md](PHASE_4_FRONTEND_IMPLEMENTATION.md) |
+| 5 | [PHASE_5_CACHE_LAYER_V2.md](PHASE_5_CACHE_LAYER_V2.md) |
+| 6 | [PHASE_6_RATE_LIMITING_V2.md](PHASE_6_RATE_LIMITING_V2.md) |
+| 7 | [PHASE_7_CUSTOM_ALIASES_V2.md](PHASE_7_CUSTOM_ALIASES_V2.md) |
+| 8 | [PHASE_8_CLEANUP_AND_ARCHIVAL_V2.md](PHASE_8_CLEANUP_AND_ARCHIVAL_V2.md) |
+| 9 | [PHASE_9_HARDENING.md](PHASE_9_HARDENING.md) |
 
 ## Runtime Deployment Model (Docker Compose Role)
 
@@ -114,7 +116,42 @@ Detailed execution guide: [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md)
 
 ---
 
-## Phase 4: Cache Layer (v2)
+## Phase 4: Frontend Implementation
+
+**Goal**: Implement and deploy a production-ready Angular SPA for URL shortening with S3 + CloudFront CDN delivery.
+
+Detailed execution guide: [PHASE_4_FRONTEND_IMPLEMENTATION.md](PHASE_4_FRONTEND_IMPLEMENTATION.md)
+
+### Deliverables
+
+- [ ] Angular project scaffolding with modern tooling
+- [ ] API client library with retry logic and error handling
+- [ ] URL shortening form component with validation
+- [ ] Results component with copy and share functionality
+- [ ] SPA routing with index.html fallback
+- [ ] Responsive CSS (mobile, tablet, desktop)
+- [ ] Unit tests (> 80% coverage)
+- [ ] E2E tests for happy path + error scenarios
+- [ ] Build optimization (< 500 KB gzipped)
+- [ ] S3 bucket with OAI (Origin Access Identity)
+- [ ] CloudFront distribution configured for SPA
+- [ ] Security headers (CSP, HSTS, X-Frame-Options)
+- [ ] Deployment automation (build + S3 upload)
+
+### Acceptance Criteria
+
+- SPA loads and displays shortening form.
+- Form validation prevents invalid submissions.
+- API calls match backend contract.
+- CloudFront serves SPA correctly (index.html fallback).
+- Lighthouse score > 90.
+- HTTPS enforced with security headers.
+- E2E tests pass for all scenarios.
+- Build < 500 KB gzipped.
+
+---
+
+## Phase 5: Cache Layer (v2)
 
 **Goal**: Add Redis cache-aside to the redirect path to reduce DB load and improve latency.
 
@@ -139,7 +176,7 @@ Detailed execution guide: [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md)
 
 ---
 
-## Phase 5: Rate Limiting (v2)
+## Phase 6: Rate Limiting (v2)
 
 **Goal**: Protect the system from abuse with multi-layer rate limiting.
 
@@ -161,7 +198,7 @@ Detailed execution guide: [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md)
 
 ---
 
-## Phase 6: Custom Aliases (v2)
+## Phase 7: Custom Aliases (v2)
 
 **Goal**: Allow users to specify custom short codes, gated behind a feature flag.
 
@@ -184,7 +221,7 @@ Detailed execution guide: [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md)
 
 ---
 
-## Phase 7: Cleanup and Archival (v2)
+## Phase 8: Cleanup and Archival (v2)
 
 **Goal**: Implement scheduled cleanup of expired URL mappings.
 
@@ -205,7 +242,7 @@ Detailed execution guide: [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md)
 
 ---
 
-## Phase 8: Hardening
+## Phase 9: Hardening
 
 **Goal**: Prepare the system for production readiness.
 
@@ -236,11 +273,12 @@ Detailed execution guide: [PHASE_1_FOUNDATION.md](PHASE_1_FOUNDATION.md)
 | Phase 1: Foundation | 2-3 days |
 | Phase 2: Core API | 3-5 days |
 | Phase 3: Observability | 2-3 days |
-| Phase 4: Cache Layer | 2-3 days |
-| Phase 5: Rate Limiting | 1-2 days |
-| Phase 6: Custom Aliases | 1-2 days |
-| Phase 7: Cleanup | 1-2 days |
-| Phase 8: Hardening | 3-5 days |
-| **Total** | **~15-25 days** |
+| Phase 4: Frontend Implementation | 3-5 days |
+| Phase 5: Cache Layer | 2-3 days |
+| Phase 6: Rate Limiting | 1-2 days |
+| Phase 7: Custom Aliases | 1-2 days |
+| Phase 8: Cleanup | 1-2 days |
+| Phase 9: Hardening | 3-5 days |
+| **Total** | **~18-30 days** |
 
-Estimates assume a single developer working part-time. Phases 4-7 can be parallelized if multiple developers are available.
+Estimates assume a single developer working part-time. Phase 4 (frontend) can be parallelized with phases 1-3 if a dedicated frontend developer is available. Phases 5-8 can be parallelized if multiple backend developers are available.
