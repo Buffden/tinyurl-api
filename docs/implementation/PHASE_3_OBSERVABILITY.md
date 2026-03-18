@@ -90,12 +90,9 @@ Add production-grade logging, metrics, and health visibility to make runtime beh
    - Expected: all passing
 
 2. **Runtime verification**
-   ```bash
-   docker compose up -d --build
-   curl http://localhost:8080/actuator/health/readiness
-   curl http://localhost:8080/actuator/health/liveness
-   curl http://localhost:8080/actuator/prometheus  # dev only
-   ```
+   - Bring up the full stack with `docker compose up -d --build`.
+   - Hit `/actuator/health/readiness` and `/actuator/health/liveness` and confirm both return `UP`.
+   - Hit `/actuator/prometheus` (dev profile only) and verify `tinyurl_http_server_requests_total` and HikariCP metrics appear in the output.
 
 3. **Error metric trigger**
    - Send invalid request
@@ -213,10 +210,6 @@ This is the recommended free stack for v1/v2 scale because it is easiest to oper
 
 ### Target Production Architecture
 
-```
-App -> stdout -> Promtail -> Loki -> Grafana
-```
-
 1. TinyURL app writes JSON to stdout
 2. Container runtime writes to local log files
 3. Promtail tails container logs, ships to Loki over private network
@@ -266,48 +259,7 @@ App -> stdout -> Promtail -> Loki -> Grafana
 
 ### Example Production Docker Compose Skeleton
 
-```yaml
-services:
-  loki:
-    image: grafana/loki:3.0.0
-    command: -config.file=/etc/loki/config.yaml
-    volumes:
-      - ./observability/loki/config.yaml:/etc/loki/config.yaml:ro
-      - loki-data:/loki
-    networks: [observability]
-    restart: unless-stopped
-
-  promtail:
-    image: grafana/promtail:3.0.0
-    command: -config.file=/etc/promtail/config.yaml
-    volumes:
-      - ./observability/promtail/config.yaml:/etc/promtail/config.yaml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks: [observability]
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:11.0.0
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_AUTH_ANONYMOUS_ENABLED=false
-    volumes:
-      - grafana-data:/var/lib/grafana
-    ports:
-      - "3000:3000"
-    networks: [observability]
-    restart: unless-stopped
-
-volumes:
-  loki-data:
-  grafana-data:
-
-networks:
-  observability:
-    internal: true
-```
+Define three services — `loki`, `promtail`, and `grafana` — on a shared internal Docker network named `observability`. Loki should mount a local config file and a named volume for persistent log storage. Promtail should mount the Docker socket and container log directory in read-only mode so it can tail container stdout. Grafana should expose port 3000, disable anonymous access via environment variable, and mount a named volume for dashboard persistence. Neither Loki nor Promtail should publish ports to the host; only Grafana should be reachable, and only via a TLS-terminating reverse proxy in production.
 
 ### Promtail Parsing Recommendations
 

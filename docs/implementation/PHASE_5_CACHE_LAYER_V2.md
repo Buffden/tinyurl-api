@@ -109,24 +109,7 @@ Tasks:
 ### Connection Pool Configuration
 
 **Redis Connection Pool Settings** (Lettuce or Jedis):
-
-```yaml
-# application.yaml (future expansion)
-spring:
-  redis:
-    standalone:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD}
-      database: 0
-    timeout: 2000ms
-    jedis:
-      pool:
-        max-active: 20        # Connection pool max size
-        max-idle: 10          # Max idle connections
-        min-idle: 5           # Min idle connections (pre-warming)
-        max-wait: 2000ms      # Wait time before fail if pool exhausted
-```
+Configure the pool with `max-active: 20`, `min-idle: 5`, `max-idle: 10`, and `max-wait: 2000ms`. Set `connect-timeout` to 500ms and `command-timeout` to 1000ms. These values are defined in `application.yaml` under `spring.data.redis` and overridden per environment via environment variables.
 
 **Why these values:**
 - max-active: 20 = sufficient for ~5K QPS with avg response time < 10ms
@@ -136,87 +119,7 @@ spring:
 ### Circuit Breaker Pattern for Redis Failures
 
 **Implementation** (Spring Cloud CircuitBreaker + Resilience4j):
-
-```java
-@Component
-public class UrlCacheService {
-    private final StringRedisTemplate redisTemplate;
-    private final UrlRepository urlRepository;
-    private final CircuitBreaker circuitBreaker;
-
-    public UrlCacheService(StringRedisTemplate template, UrlRepository repo) {
-        this.redisTemplate = template;
-        this.urlRepository = repo;
-        
-        // Configure circuit breaker
-        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
-            .failureRateThreshold(50.0)        // Open after 50% failures
-            .slowCallRateThreshold(50.0)       // Count > 2000ms as slow
-            .slowCallDurationThreshold(Duration.ofMillis(2000))
-            .waitDurationInOpenState(Duration.ofSeconds(30))  // Wait 30s before retry
-            .permittedNumberOfCallsInHalfOpenState(5)  // Allow 5 test calls
-            .recordExceptions(RedisConnectionFailureException.class)
-            .ignoreExceptions(NullPointerException.class)
-            .build();
-        
-        this.circuitBreaker = CircuitBreaker.of("redis-calls", config);
-    }
-
-    @CircuitBreaker(name = "redis-calls", fallbackMethod = "fallbackGetByCode")
-    public UrlMapping getByCode(String shortCode) {
-        try {
-            // Try cache first
-            String cached = redisTemplate.opsForValue().get("url:" + shortCode);
-            if (cached != null) {
-                return cached.equals("NOTFOUND") ? null : parseMapping(cached);
-            }
-        } catch (Exception e) {
-            log.warn("Redis cache error, falling back to DB", e);
-            // Circuit breaker will trip on repeated failures
-        }
-        
-        // Cache miss or error, query DB
-        UrlMapping mapping = urlRepository.findByShortCode(shortCode);
-        
-        // Populate cache
-        if (mapping != null) {
-            cacheMapping(shortCode, mapping);
-        } else {
-            cacheNotFound(shortCode);  // Negative cache
-        }
-        
-        return mapping;
-    }
-
-    // Fallback when circuit is open (use DB directly, skip cache)
-    public UrlMapping fallbackGetByCode(String shortCode, Exception ex) {
-        log.error("Circuit breaker open for Redis, using DB directly", ex);
-        return urlRepository.findByShortCode(shortCode);
-    }
-
-    private void cacheMapping(String shortCode, UrlMapping mapping) {
-        try {
-            String key = "url:" + shortCode;
-            String value = serializeMapping(mapping);
-            // TTL = (expiry - now) in seconds, max 24 hours
-            long ttlSeconds = calculateTTL(mapping.getExpiryAt());
-            redisTemplate.opsForValue().set(key, value, Duration.ofSeconds(ttlSeconds));
-        } catch (Exception e) {
-            log.warn("Failed to cache mapping for {}, continuing without cache", shortCode, e);
-        }
-    }
-
-    private void cacheNotFound(String shortCode) {
-        try {
-            String key = "url:" + shortCode;
-            // Negative cache with fixed TTL (60-300 seconds to reduce DB hits)
-            redisTemplate.opsForValue().set(key, "NOTFOUND", Duration.ofSeconds(120));
-        } catch (Exception e) {
-            log.warn("Failed to cache NOTFOUND for {}", shortCode, e);
-        }
-    }
-}
-```
+Wrap all Redis read/write calls inside a `CircuitBreaker` bean named `redis-calls`. Configure it to open after a 50% failure rate over a 10-call sliding window, stay open for 30 seconds, then transition to half-open and allow 3 trial calls. On open, the fallback immediately queries the database directly. Register the circuit breaker via `Resilience4jCircuitBreakerFactory` and expose its state metric via the existing Micrometer/Actuator integration.
 
 **Metrics to track**:
 - `circuitbreaker.calls.total{name="redis-calls", state="success|failure|ignored"}`
@@ -250,11 +153,7 @@ public class UrlCacheService {
 ### Cache Key Naming Convention & Collision Prevention
 
 **Key Format**:
-```
-url:<short_code>              # Main cache entry (expiry-based TTL)
-url:metadata:<short_code>     # (Future) Metadata: hit count, last access
-url:deleted:<short_code>      # (Future) Soft-delete marker (short TTL)
-```
+Use the pattern `url:v1:<short_code>` for all cache entries (e.g., `url:v1:aB3xYz`). The `url:` namespace isolates URL mappings from any other Redis keys. The `v1:` version prefix allows future cache schema changes to be rolled out without collisions by bumping the version and running both keys in parallel during migration.
 
 **Collision Prevention**:
 1. **Max short code length**: 8 characters (Base62) = 218 trillion unique codes >> 10M URLs needed
@@ -263,63 +162,18 @@ url:deleted:<short_code>      # (Future) Soft-delete marker (short TTL)
 4. **No user-controlled cache keys**: System generates all keys (prevent injection)
 
 **Key Expiration Safety**:
-```java
-// Set TTL at key creation, not later (atomic operation)
-String ttlKey = "url:" + shortCode;
-long ttlSeconds = calculateTTL(expiryAt);  // Time until URL expires
-redisTemplate.opsForValue().set(ttlKey, value, ttlSeconds, TimeUnit.SECONDS);
-// Redis automatically deletes key after TTL expires
-```
+When writing a cache entry, compute the TTL as `(expiresAt - now)` in seconds, capped at 86400 seconds (24 hours). Never write a key without a TTL to prevent stale entries accumulating indefinitely. If `expiresAt` is already in the past, skip the cache write entirely and return the DB result directly.
 
 ### Cache Warm-up & Population Strategy
 
 **On URL Creation**:
-```java
-@PostMapping("/api/urls")
-public ResponseEntity<CreateUrlResponse> create(@Valid @RequestBody CreateUrlRequest req) {
-    UrlMapping mapping = urlService.create(req);
-    
-    // Immediate cache warm-up (synchronous for v1)
-    cacheService.cacheMapping(mapping.getShortCode(), mapping);
-    
-    return ResponseEntity.status(201).body(new CreateUrlResponse(mapping.getShortUrl()));
-}
-```
+After persisting a new URL mapping to the database, immediately write the mapping to the cache using the computed TTL. This pre-warms the cache so the first redirect request hits a cache entry rather than the database.
 
 **On First Redirect** (Cache-aside pattern):
-```java
-@GetMapping("/{shortCode}")
-public ResponseEntity<?> redirect(@PathVariable String shortCode) {
-    UrlMapping mapping = cacheService.getByCode(shortCode);  // Cache-first
-    
-    if (mapping == null) {
-        return ResponseEntity.notFound().build();
-    }
-    if (mapping.isExpired()) {
-        return ResponseEntity.status(410).build();
-    }
-    
-    return ResponseEntity.status(mapping.getRedirectStatus())
-        .location(mapping.getOriginalUrl())
-        .build();
-}
-```
+On a cache miss, read the mapping from the database, write it to the cache with the remaining TTL, then return the redirect. All subsequent redirects for the same short code will be served from cache until the TTL expires.
 
 **Negative Cache Handling**:
-```java
-// Cache 404 responses to reduce DB hits
-private void cacheNotFound(String shortCode) {
-    String key = "url:" + shortCode;
-    // TTL = 120s (short, to let future creates propagate quickly)
-    redisTemplate.opsForValue().set(key, "NOTFOUND", 120, TimeUnit.SECONDS);
-}
-
-// On retrieval, check for NOTFOUND marker
-String cached = redisTemplate.opsForValue().get(key);
-if ("NOTFOUND".equals(cached)) {
-    return null;  // Cache hit for non-existent code (avoid DB query)
-}
-```
+If a short code is not found in the database (genuine 404), write a sentinel value (e.g., the string `"NOT_FOUND"`) to the cache under the same key with a 120-second TTL. On subsequent requests, treat the sentinel as a 404 response without querying the database, preventing repeated DB lookups for non-existent codes.
 
 ### Monitoring & Metrics
 

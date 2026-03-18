@@ -137,12 +137,7 @@ Phase 1 is complete only when all criteria below are true:
 
 ## Validation Commands
 
-```bash
-docker compose up -d
-./tinyurl/gradlew clean test
-./tinyurl/gradlew bootRun
-curl http://localhost:8080/actuator/health
-```
+Start the stack with `docker compose up -d`, then run `./gradlew clean test` to verify all tests pass. Boot the app with `./gradlew bootRun` and confirm `GET /actuator/health` returns status `UP`. Check that Flyway has applied the initial migration by inspecting the `flyway_schema_history` table in the running Postgres container.
 
 ## Handoff to Phase 2
 
