@@ -33,6 +33,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-tinyurl}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-tinyurl}
       SERVER_PORT: 8080
+      TINYURL_BASE_URL: http://localhost:8080
     expose:
       - "8080"
     networks:
