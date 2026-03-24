@@ -15,7 +15,7 @@ Design a URL shortener system that:
 
 The system must prioritize redirect performance since redirects are perceived as part of normal page navigation.
 
-Primary deployment target (v1): `tinyurl.buffden.com` (single region).
+Primary deployment target (v1): `go.buffden.com` (single region).
 
 ---
 
@@ -96,7 +96,7 @@ Reason: keep v1 small, shippable, and focused on redirect correctness + low late
 ## 6) Minimum Components (What Must Exist)
 
 - Client (browser).
-- DNS resolution (entry to `tinyurl.buffden.com`).
+- DNS resolution (entry to `go.buffden.com`).
 - Load balancer (L4 or L7).
 - Nginx (TLS termination + reverse proxy).
 - Stateless application servers (redirect + create logic).

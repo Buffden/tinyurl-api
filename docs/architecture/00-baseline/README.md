@@ -8,7 +8,7 @@
 
 A URL shortener accepts a long URL and returns a short, human-shareable alias that redirects to the original. The system's primary job is redirection — it is not a metadata store, analytics platform, or user management system. Redirects are perceived as part of normal page navigation; any latency is user-visible. The system must therefore be optimised heavily for the read (redirect) path, while keeping the write (create) path simple and correct.
 
-The deployment target is `tinyurl.buffden.com`, operating in a single region. v1 establishes a production-minimal baseline. v2 evolves it to handle higher scale and reliability requirements without changing the deployment model.
+The deployment target is `go.buffden.com`, operating in a single region. v1 establishes a production-minimal baseline. v2 evolves it to handle higher scale and reliability requirements without changing the deployment model.
 
 ---
 

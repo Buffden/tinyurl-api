@@ -29,7 +29,7 @@ actor User
 
 ' ---------------- INTERNET ----------------
 package "Public Internet" #LightGray {
-    cloud "DNS\n(tinyurl.buffden.com)" as DNS
+    cloud "DNS\n(go.buffden.com)" as DNS
 }
 
 ' ---------------- AWS REGION ----------------

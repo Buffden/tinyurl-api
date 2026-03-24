@@ -196,14 +196,14 @@ This document defines the phased implementation plan for TinyURL. Each phase has
 - [ ] Nginx TLS configuration (HTTPS only)
 - [ ] Final documentation review and update
 - [ ] Runbook for common operational tasks
-- [ ] Deployment to `tinyurl.buffden.com`
+- [ ] Deployment to `go.buffden.com`
 
 ### Acceptance Criteria
 
 - System handles target QPS with P99 < 200 ms.
 - No critical or high security findings remain.
 - All documentation is current and accurate.
-- System is live at `tinyurl.buffden.com`.
+- System is live at `go.buffden.com`.
 
 ---
 

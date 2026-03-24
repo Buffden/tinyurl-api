@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: tinyurl
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tinyurl}
+    username: ${SPRING_DATASOURCE_USERNAME:tinyurl}
+    password: ${SPRING_DATASOURCE_PASSWORD:tinyurl}
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-components: when_authorized
+      show-details: when_authorized
+      group:
+        readiness:
+          include: readinessState,db,diskSpace,ping
+        liveness:
+          include: livenessState,ping
+  endpoints:
+    web:
+      exposure:
+        # Default: expose metrics for dev/test. Restricted in production via application-prod.yaml
+        include: health,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.95,0.99
+
+tinyurl:
+  base-url: ${TINYURL_BASE_URL:http://localhost}
+  default-expiry-days: ${TINYURL_DEFAULT_EXPIRY_DAYS:180}
+  short-code-min-length: ${TINYURL_SHORT_CODE_MIN_LENGTH:6}
+  allowed-origins: ${TINYURL_ALLOWED_ORIGINS:}
+

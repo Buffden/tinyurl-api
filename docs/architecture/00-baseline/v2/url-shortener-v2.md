@@ -13,7 +13,7 @@ Evolve the v1 URL shortener into a system that:
 - Adds abuse resistance (enumeration, bot spikes, write flooding)
 - Improves reliability with measurable SLOs and basic observability
 
-Deployment target (v2): still **single-region**, hosted on `tinyurl.buffden.com`.
+Deployment target (v2): still **single-region**, hosted on `go.buffden.com`.
 
 ---
 
@@ -101,13 +101,13 @@ Version 2:
 
 ## 6) Architecture Overview
 
-Deployment: **AWS Region (Single Region)**, hosted on `tinyurl.buffden.com`.
+Deployment: **AWS Region (Single Region)**, hosted on `go.buffden.com`.
 
 ### Layers
 
 | Layer | Components |
 | --- | --- |
-| Public Internet | DNS (`tinyurl.buffden.com`) |
+| Public Internet | DNS (`go.buffden.com`) |
 | Entry Layer | Load Balancer (L4 / L7) |
 | Application Tier | Nginx (TLS Termination + Reverse Proxy), URL Shortener App (Stateless Instances + Token Bucket RL) |
 | Cache Layer | Redis (Cache-Aside + Negative Caching) |

@@ -1,0 +1,36 @@
+# ── Base configuration ────────────────────────────────────────────────────────
+# Shared by both dev and prod. Contains only what is common across all environments.
+#
+#   dev:  docker-compose.override.yml  (auto-loaded — adds postgres container, nginx, frontend)
+#   prod: docker-compose.prod.yml      (explicit: -f docker-compose.yml -f docker-compose.prod.yml)
+#
+# SPRING_DATASOURCE_URL is intentionally absent here — each environment sets it:
+#   dev  → docker-compose.override.yml hardcodes jdbc:postgresql://postgres:5432/tinyurl
+#   prod → .env.prod provides the RDS endpoint via ${SPRING_DATASOURCE_URL}
+
+services:
+  backend:
+    build:
+      context: ./tinyurl
+      dockerfile: Dockerfile
+    container_name: tinyurl-backend
+    environment:
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SERVER_PORT:                8080
+    expose:
+      - "8080"
+    networks:
+      - app_internal
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+networks:
+  public:
+  app_internal:
+    internal: true

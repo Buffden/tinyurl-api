@@ -1,0 +1,38 @@
+# ── Prod overrides ────────────────────────────────────────────────────────────
+# Merged explicitly on the server — never auto-loaded.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     --env-file .env.prod up -d --build
+#
+# Differences from dev:
+#   - No postgres service — backend connects to RDS via SPRING_DATASOURCE_URL in .env.prod
+#   - nginx listens on 80 + 443, uses nginx.prod.conf (SSL + rate limiting)
+#   - /etc/letsencrypt bind-mounted read-only for TLS certificates
+#   - TINYURL_BASE_URL set to the live domain
+#   - Spring prod profile active (restricts actuator exposure)
+#   - No frontend service — Angular SPA is deployed to S3 + CloudFront (ADR-006)
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: tinyurl-nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - public
+      - app_internal
+    volumes:
+      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro   # certs issued by Certbot on the host
+    restart: unless-stopped
+
+  backend:
+    environment:
+      SPRING_DATASOURCE_URL:   ${SPRING_DATASOURCE_URL}   # RDS endpoint — set in .env.prod
+      TINYURL_BASE_URL:        https://go.buffden.com
+      SPRING_PROFILES_ACTIVE:  prod
+      TINYURL_ALLOWED_ORIGINS: https://tinyurl.buffden.com

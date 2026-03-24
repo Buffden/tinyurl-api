@@ -1,0 +1,78 @@
+# ── Dev overrides ─────────────────────────────────────────────────────────────
+# Auto-loaded by Docker Compose when you run `docker compose up`.
+# No flags needed — this file is merged on top of docker-compose.yml automatically.
+#
+# Adds:
+#   - postgres container (dev only — prod uses RDS)
+#   - nginx on localhost:8080 using the plain HTTP dev config
+#   - Angular dev server on localhost:4200 with hot-reload and src volume mount
+#   - SPRING_DATASOURCE_URL pointing at the local postgres container
+#   - TINYURL_BASE_URL pointed at localhost:8080
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tinyurl-postgres
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA:            /var/lib/postgresql/data/pgdata
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - app_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: tinyurl-nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    networks:
+      - public
+      - app_internal
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./tinyurl-gui
+      dockerfile: Dockerfile
+      target: dev        # uses the hot-reload ng serve stage
+    container_name: tinyurl-frontend
+    ports:
+      - "4200:4200"
+    networks:
+      - public
+    volumes:
+      - ./tinyurl-gui/src:/app/src   # live-reload: changes to src reflect immediately
+    restart: unless-stopped
+
+  backend:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tinyurl
+      TINYURL_BASE_URL:      http://localhost:8080
+
+volumes:
+  postgres-data:

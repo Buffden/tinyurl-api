@@ -6,7 +6,7 @@
 
 ## 1) System Overview
 
-TinyURL is a single-region URL shortener deployed at `tinyurl.buffden.com`. The system accepts long URLs, generates unique short codes, and redirects users to the original URL with low latency.
+TinyURL is a single-region URL shortener deployed at `go.buffden.com`. The system accepts long URLs, generates unique short codes, and redirects users to the original URL with low latency.
 
 The architecture follows a stateless application tier backed by a relational database, with caching introduced in v2 to absorb redirect traffic.
 
@@ -21,11 +21,20 @@ User → DNS → Load Balancer → Nginx (TLS) → App Server(s) → PostgreSQL
 ```
 
 | Component | Responsibility |
+<<<<<<< Updated upstream:docs/hld/system-design.md
 |---|---|
 | DNS | Resolves `tinyurl.buffden.com` to the load balancer. |
 | Load Balancer (L4/L7) | Distributes traffic across application instances. Health checks. |
 | Nginx | TLS termination, reverse proxy, static rate limiting (v2). |
 | Application Server | Application servers hold no in-memory state required for correctness. Any instance can handle any request. Horizontally scalable. |
+=======
+| --- | --- |
+| DNS (Route53) | Resolves `go.buffden.com` and `tinyurl.buffden.com` to CloudFront distributions. |
+| CloudFront (API dist) | Public API and redirect entry point. Forwards backend traffic to Nginx origin. |
+| CloudFront (SPA dist) | Serves frontend traffic from S3 origin with CDN caching and SPA fallback rules. |
+| Nginx | TLS termination, reverse proxy. |
+| Application Server | Stateless — any instance can handle any request. Horizontally scalable within the backend runtime boundary. |
+>>>>>>> Stashed changes:docs/hld/system-design/system-design.md
 | PostgreSQL | Primary data store. Stores `short_code → original_url` mappings. Single primary. |
 
 ### v2 Additions
