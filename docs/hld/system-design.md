@@ -6,7 +6,7 @@
 
 ## 1) System Overview
 
-TinyURL is a single-region URL shortener deployed at `tinyurl.buffden.com`. The system accepts long URLs, generates unique short codes, and redirects users to the original URL with low latency.
+TinyURL is a single-region URL shortener deployed in `us-east-1`. The API and short URL redirects are served at `go.buffden.com`; the Angular SPA is hosted at `tinyurl.buffden.com` (S3 + CloudFront). The system accepts long URLs, generates unique short codes, and redirects users to the original URL with low latency.
 
 The architecture follows a stateless application tier backed by a relational database, with caching introduced in v2 to absorb redirect traffic.
 
@@ -22,8 +22,8 @@ User → DNS → Load Balancer → Nginx (TLS) → App Server(s) → PostgreSQL
 
 | Component | Responsibility |
 |---|---|
-| DNS | Resolves `tinyurl.buffden.com` to the load balancer. |
-| Load Balancer (L4/L7) | Distributes traffic across application instances. Health checks. |
+| DNS | Resolves `go.buffden.com` → ALB (API/redirects); `tinyurl.buffden.com` → CloudFront (Angular SPA). |
+| AWS ALB | TLS termination, HTTP→HTTPS redirect, health checks, distributes traffic across EC2 instances. |
 | Nginx | TLS termination, reverse proxy, static rate limiting (v2). |
 | Application Server | Application servers hold no in-memory state required for correctness. Any instance can handle any request. Horizontally scalable. |
 | PostgreSQL | Primary data store. Stores `short_code → original_url` mappings. Single primary. |
@@ -47,7 +47,7 @@ User → DNS → LB → Nginx (TLS + Rate Limiting) → App → Redis (Cache) �
 
 ### Write Path (Create Short URL)
 
-1. Client sends `POST /create` with original URL and optional expiry.
+1. Client sends `POST /api/urls` with original URL and optional expiry.
 2. Request passes through LB → Nginx → App.
 3. App validates input (URL format, length).
 4. App generates `short_code` via DB sequence + Base62 encoding.

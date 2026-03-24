@@ -141,4 +141,4 @@ An end user creates a short URL with a custom, human-readable alias instead of a
 - **Feature-flagged**: Custom aliases are gated behind a configuration flag. This allows the feature to be disabled if it causes operational issues (e.g., namespace squatting).
 - **Stricter rate limit**: Custom alias creation has a lower rate limit (2/min vs 5/min for standard) because alias validation requires a DB lookup.
 - **Namespace reservation**: Once a custom alias is used, it cannot be reused even after expiry. This prevents confusion and ensures link permanence.
-- **No re-assignment**: If a user creates `tinyurl.buffden.com/mylink`, that alias is permanently consumed. There is no mechanism to release it.
+- **No re-assignment**: If a user creates `go.buffden.com/mylink`, that alias is permanently consumed. There is no mechanism to release it.
