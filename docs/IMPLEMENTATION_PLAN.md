@@ -37,7 +37,7 @@ This document defines the phased implementation plan for TinyURL. Each phase has
 
 - `docker compose up` starts the application and database.
 - CI pipeline runs on push and blocks merge on failure.
-- Database schema matches [database-design.md](hld/database-design.md).
+- Database schema matches [database/README.md](hld/database/README.md).
 
 ---
 

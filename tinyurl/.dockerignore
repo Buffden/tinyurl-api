@@ -1,0 +1,25 @@
+# Version control metadata
+.git
+.gitignore
+
+# Gradle/build artifacts
+.gradle
+build
+out
+
+# IDE/editor files
+.idea
+.vscode
+*.iml
+
+# Local environment and OS noise
+.env
+.env.*
+.DS_Store
+
+# Logs and crash dumps
+*.log
+hs_err_pid*
+
+# Project docs not needed for image build
+HELP.md
