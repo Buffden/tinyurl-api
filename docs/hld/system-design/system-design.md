@@ -6,7 +6,7 @@
 
 ## 1) System Overview
 
-TinyURL is a single-region URL shortener deployed at `tinyurl.buffden.com`. The system accepts long URLs, generates unique short codes, and redirects users to the original URL with low latency.
+TinyURL is a single-region URL shortener deployed in `us-east-1`. The API and short URL redirects are served at `go.buffden.com`; the Angular SPA is hosted at `tinyurl.buffden.com` (S3 + CloudFront). The system accepts long URLs, generates unique short codes, and redirects users to the original URL with low latency.
 
 The architecture is CloudFront-first at the edge, with backend services running as Docker containers orchestrated by Docker Compose on a single EC2 host. The application tier is stateless and backed by a relational database, with caching introduced in v2 to absorb redirect traffic.
 
@@ -20,10 +20,10 @@ The architecture is CloudFront-first at the edge, with backend services running 
 
 | Component | Responsibility |
 | --- | --- |
-| DNS (Route53) | Resolves `tinyurl.buffden.com` and `app.tinyurl.buffden.com` to CloudFront distributions. |
-| CloudFront (API dist) | Public API and redirect entry point. Forwards backend traffic to Nginx origin. |
-| CloudFront (SPA dist) | Serves frontend traffic from S3 origin with CDN caching and SPA fallback rules. |
-| Nginx | TLS termination, reverse proxy. |
+| DNS (Route 53) | Resolves `go.buffden.com` → ALB (API/redirects); `tinyurl.buffden.com` → CloudFront (Angular SPA). |
+| AWS ALB | TLS termination, HTTP→HTTPS redirect, health checks, routes traffic to EC2 instances. |
+| CloudFront (SPA dist) | Serves Angular SPA from S3 origin with CDN caching and SPA fallback rules. |
+| Nginx | Reverse proxy inside EC2 Docker Compose. Routes requests to the Spring Boot app. |
 | Application Server | Stateless — any instance can handle any request. Horizontally scalable within the backend runtime boundary. |
 | PostgreSQL | Primary data store. Stores `short_code → original_url` mappings. Single primary. |
 
@@ -52,7 +52,7 @@ The architecture is CloudFront-first at the edge, with backend services running 
 ### Write Path (Create Short URL)
 
 1. Client sends `POST /api/urls` with original URL and optional expiry.
-2. Request passes through Route53 → CloudFront (API) → Nginx → App.
+2. Request passes through Route53 → ALB → Nginx → App.
 3. App validates input (URL format, length).
 4. App generates `short_code` via DB sequence + Base62 encoding.
 5. App writes mapping to PostgreSQL.
@@ -61,8 +61,8 @@ The architecture is CloudFront-first at the edge, with backend services running 
 
 ### Read Path (Redirect)
 
-1. Client accesses `GET /<short_code>`.
-2. Request passes through Route53 → CloudFront (API) → Nginx → App.
+1. Client accesses `GET /<short_code>` at `go.buffden.com`.
+2. Request passes through Route53 → ALB → Nginx → App.
 3. (v2) App checks Redis cache first.
 4. On cache miss: App queries PostgreSQL by `short_code`.
 5. App checks expiry and deletion status.
