@@ -31,3 +31,6 @@ npm-debug.log*
 # OS generated
 Thumbs.db
 ehthumbs.db
+
+# Separate repos — managed independently
+tinyurl-gui/
