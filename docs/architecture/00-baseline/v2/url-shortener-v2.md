@@ -13,7 +13,7 @@ Evolve the v1 URL shortener into a system that:
 - Adds abuse resistance (enumeration, bot spikes, write flooding)
 - Improves reliability with measurable SLOs and basic observability
 
-Deployment target (v2): still **single-region**, hosted on `tinyurl.buffden.com`.
+Deployment target (v2): still **single-region** (`us-east-1`). API + short URL redirects at `go.buffden.com`; Angular SPA at `tinyurl.buffden.com`.
 
 ---
 
@@ -101,14 +101,14 @@ Version 2:
 
 ## 6) Architecture Overview
 
-Deployment: **AWS Region (Single Region)**, hosted on `tinyurl.buffden.com`.
+Deployment: **AWS `us-east-1` (Single Region)**. API + redirects at `go.buffden.com` (ALB → EC2); Angular SPA at `tinyurl.buffden.com` (S3 + CloudFront).
 
 ### Layers
 
 | Layer | Components |
 | --- | --- |
-| Public Internet | DNS (`tinyurl.buffden.com`) |
-| Entry Layer | Load Balancer (L4 / L7) |
+| Public Internet | DNS — `go.buffden.com` (API/redirects) and `tinyurl.buffden.com` (SPA) |
+| Entry Layer | AWS ALB (`go.buffden.com`) + CloudFront (`tinyurl.buffden.com`) |
 | Application Tier | Nginx (TLS Termination + Reverse Proxy), URL Shortener App (Stateless Instances + Token Bucket RL) |
 | Cache Layer | Redis (Cache-Aside + Negative Caching) |
 | Data Tier | PostgreSQL Primary DB |
@@ -116,7 +116,7 @@ Deployment: **AWS Region (Single Region)**, hosted on `tinyurl.buffden.com`.
 
 Legend:
 - **Blue path** — Read path (`GET /{code}`)
-- **Red path** — Write path (`POST /shorten`)
+- **Red path** — Write path (`POST /api/urls`)
 
 ---
 

@@ -9,7 +9,7 @@
 - **Version**: v1
 - **Description**: Users can submit a long URL and receive a unique short URL.
 - **Input**: Original URL (max 2,048 characters).
-- **Output**: Short URL in the format `https://tinyurl.buffden.com/<short_code>`.
+- **Output**: Short URL in the format `https://go.buffden.com/<short_code>`.
 - **Constraints**:
   - Short codes are 6-8 characters, Base62 encoded.
   - Each long URL may produce a different short code on each submission (no deduplication in v1).

@@ -39,7 +39,7 @@ An end user accesses a short URL. The system resolves the short code to the orig
 
 ## 4) Triggers
 
-- End user sends a `GET /<short_code>` request.
+- End user sends a `GET /<short_code>` request to `go.buffden.com`.
 
 ---
 

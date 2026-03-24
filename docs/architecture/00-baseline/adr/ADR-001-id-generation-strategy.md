@@ -8,7 +8,7 @@
 
 ## Context
 
-Each short URL requires a unique, compact identifier that appears directly in the user-facing URL (`tinyurl.buffden.com/{code}`). The identifier must be:
+Each short URL requires a unique, compact identifier that appears directly in the user-facing URL (`go.buffden.com/{code}`). The identifier must be:
 
 - Unique with no collision risk
 - 6–8 characters (Base62 alphabet)
