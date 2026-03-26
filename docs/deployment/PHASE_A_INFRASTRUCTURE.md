@@ -120,30 +120,35 @@ For each subnet:
 
 Create three security groups inside `tinyurl-prod-vpc`.
 
-### sg-alb (Internet-facing load balancer)
+### tinyurl-alb (Internet-facing load balancer)
+
+> AWS does not allow security group names starting with `sg-` — use names without that prefix.
 
 1. **VPC → Security Groups → Create security group**
-2. Name: `sg-tinyurl-alb`, VPC: `tinyurl-prod-vpc`
-3. Inbound rules:
+2. Name: `tinyurl-alb`, VPC: `tinyurl-prod-vpc`
+3. Description: `Internet-facing load balancer`
+4. Inbound rules:
    - HTTP (80) from `0.0.0.0/0`
    - HTTPS (443) from `0.0.0.0/0`
+5. Outbound: All traffic (default)
+
+### tinyurl-ec2 (Application server)
+
+1. Name: `tinyurl-ec2`, VPC: `tinyurl-prod-vpc`
+2. Description: `Application server, accepts traffic from ALB only`
+3. Inbound rules:
+   - HTTP (80) from source: `tinyurl-alb` (not `0.0.0.0/0` — only ALB can reach EC2)
 4. Outbound: All traffic (default)
-
-### sg-ec2 (Application server)
-
-1. Name: `sg-tinyurl-ec2`, VPC: `tinyurl-prod-vpc`
-2. Inbound rules:
-   - HTTP (80) from source: `sg-tinyurl-alb` (not `0.0.0.0/0` — only ALB can reach EC2)
-3. Outbound: All traffic (default)
 
 > No port 22. SSH is not used. EC2 access is via SSM Session Manager only.
 
-### sg-rds (Database)
+### tinyurl-rds (Database)
 
-1. Name: `sg-tinyurl-rds`, VPC: `tinyurl-prod-vpc`
-2. Inbound rules:
-   - PostgreSQL (5432) from source: `sg-tinyurl-ec2`
-3. Outbound: None (remove default rule)
+1. Name: `tinyurl-rds`, VPC: `tinyurl-prod-vpc`
+2. Description: `Database, accepts traffic from EC2 only`
+3. Inbound rules:
+   - PostgreSQL (5432) from source: `tinyurl-ec2`
+4. Outbound: None (remove default rule)
 
 ---
 
@@ -181,6 +186,8 @@ This role lets EC2 use SSM Session Manager (replaces SSH) and read secrets from 
 This role lets GitHub Actions deploy without storing any AWS keys.
 
 **2a. Create OIDC provider:**
+
+> Skip this step if the provider already exists. Go to **IAM → Identity providers** and check if `token.actions.githubusercontent.com` is already listed (likely from a previous project). If it is, proceed directly to 2b.
 
 1. Go to **IAM → Identity providers → Add provider**
 2. Provider type: **OpenID Connect**
@@ -245,22 +252,28 @@ This role lets GitHub Actions deploy without storing any AWS keys.
 ### 6b. Create RDS instance
 
 1. Go to **RDS → Databases → Create database**
-2. Engine: **PostgreSQL**, version: **16.x** (latest 16)
-3. Template: **Free tier** (selects db.t3.micro automatically — change to db.t3.micro if not)
+2. Engine: **PostgreSQL**, version: **17.x** (latest 17)
+3. Template: **Free Tier** (visible for standard PostgreSQL — you will still be billed since account free tier has expired, but this template forces db.t3.micro)
 4. DB instance identifier: `tinyurl-prod`
 5. Master username: `tinyurl`
-6. Master password: generate a strong random password — **save this, you will put it in SSM**
-7. Instance class: `db.t3.micro`
-8. Storage: 5 GB gp3, enable auto-scaling (max 20 GB)
-9. VPC: `tinyurl-prod-vpc`
-10. DB subnet group: `tinyurl-rds-subnet-group`
-11. Public access: **No**
-12. VPC security group: `sg-tinyurl-rds`
-13. Initial database name: `tinyurl`
-14. Automated backups: Enabled, 7-day retention
-15. Encryption: Enabled (AWS managed key)
-16. Deletion protection: **Enabled**
-17. Click **Create database** — takes ~5 minutes
+6. Master password: **Self managed** — generate with `openssl rand -base64 32`, save it, you will put it in SSM Parameter Store in Phase B
+7. Database authentication: **Password authentication**
+8. Instance class: `db.t3.micro` (selected automatically by Free Tier template)
+9. Multi-AZ: **Disable** (not needed for this project, saves ~$13/month)
+10. Storage: 25 GiB gp3, disable auto-scaling (minimum enforced by AWS is 20 GiB)
+11. Connectivity: **Don't connect to an EC2 compute resource** (EC2 not created yet — connectivity handled via security groups)
+12. Network type: **IPv4**
+13. VPC: `tinyurl-prod-vpc`
+14. DB subnet group: `tinyurl-rds-subnet-group`
+15. Public access: **No**
+16. VPC security group: `tinyurl-rds`
+17. Initial database name: `tinyurl_production_db`
+18. Performance Insights: **Enable**, retention **7 days** (free tier) — or disable entirely
+19. Certificate authority: `rds-ca-rsa2048-g1` (default — free, enables TLS)
+20. Automated backups: Enabled, 7-day retention
+21. Encryption: Enabled (AWS managed key)
+22. Deletion protection: **Enabled**
+23. Click **Create database** — takes ~5 minutes
 
 > After creation, copy the **Endpoint** (e.g. `tinyurl-prod.xyz.us-east-1.rds.amazonaws.com`). You will need it for SSM Parameter Store in Phase B.
 
@@ -271,13 +284,15 @@ This role lets GitHub Actions deploy without storing any AWS keys.
 1. Go to **EC2 → Launch instance**
 2. Name: `tinyurl-prod`
 3. AMI: **Ubuntu Server 22.04 LTS** (64-bit x86)
-4. Instance type: `t3.small`
+4. Instance type: `t3.small` (~$15/month — 2 GB RAM needed to run Docker + Spring Boot + Nginx without OOM)
 5. Key pair: **Proceed without a key pair** (access is via SSM — no SSH needed)
 6. Network settings:
    - VPC: `tinyurl-prod-vpc`
-   - Subnet: `tinyurl-public-1a` (us-east-1a)
+   - Subnet: **`tinyurl-public-1a`** (`10.0.1.0/24`) — must be a public subnet, not private
    - Auto-assign public IP: **Enable**
-   - Security group: `sg-tinyurl-ec2`
+   - Security group: `tinyurl-ec2`
+
+> **Critical:** Make sure the subnet selected shows CIDR `10.0.1.0/24`. Using a private subnet (`10.0.3.x`) will prevent SSM from reaching AWS endpoints and the instance will not appear in Fleet Manager.
 7. Storage: 20 GB gp3
 8. Advanced details → IAM instance profile: `role-tinyurl-ec2`
 9. User data (paste this — installs Docker on first boot):
@@ -295,6 +310,8 @@ mkdir -p /app
 10. Click **Launch instance**
 
 > After launch, go to **Systems Manager → Fleet Manager**. Within 2–3 minutes the instance should appear as **Online**. This confirms SSM Session Manager is working and you can connect without SSH.
+>
+> **Why SSM matters:** No SSH or key pair needed — access is via AWS console. GitHub Actions uses SSM `SendCommand` in Phase D to trigger deployments on the EC2 instance. Without SSM working, automated deployments will not work.
 
 ---
 
@@ -341,45 +358,55 @@ mkdir -p /app
 1. Go to **S3 → Create bucket**
 2. Bucket name: `tinyurl-spa-prod`
 3. Region: `us-east-1`
-4. Block all public access: **On** (all four checkboxes)
-5. Versioning: Disabled
-6. Encryption: SSE-S3 (default)
-7. Click **Create bucket**
+4. Bucket type: **General purpose**
+5. Object ownership: **ACLs disabled** (recommended)
+6. Block all public access: **On** (all four checkboxes)
+7. Versioning: **Disabled**
+8. Encryption: **SSE-S3** (default), Bucket Key: **Enable**
+9. Click **Create bucket**
 
 > Do not enable static website hosting — CloudFront handles routing.
+> The S3 bucket policy will be automatically added by CloudFront when you select "Allow private S3 bucket access" during distribution creation.
 
 ---
 
 ## Step 10 — CloudFront Distribution
 
 1. Go to **CloudFront → Create distribution**
-2. Origin domain: select `tinyurl-spa-prod.s3.us-east-1.amazonaws.com`
-3. Origin access: **Origin access control settings (recommended)**
-   - Click **Create new OAC**, name: `tinyurl-spa-oac`, sign requests: Yes
-   - After creation, copy the S3 bucket policy that CloudFront shows — you will apply it in the next step
-4. Default cache behavior:
-   - Viewer protocol policy: **Redirect HTTP to HTTPS**
-   - Cache policy: `CachingOptimized`
-5. Settings:
-   - Price class: **Use only North America and Europe**
-   - Alternate domain names (CNAMEs): `tinyurl.buffden.com`
-   - Custom SSL certificate: select `*.buffden.com`
-   - Default root object: `index.html`
-6. Click **Create distribution**
-
-**Apply S3 bucket policy (OAC):**
-
-1. Go to **S3 → tinyurl-spa-prod → Permissions → Bucket policy**
-2. Paste the policy CloudFront generated in step 3 above
-3. Save
+   - If a pricing plan popup appears, select **Pay-as-you-go** (no commitment, costs under $1/month for a portfolio project — AWS Shield Standard DDoS protection is included free regardless)
+2. Distribution name: `tinyurl-spa-prod`
+3. Distribution type: **Single website or app**
+4. Route 53 managed domain: leave blank
+5. Origin type: **Amazon S3**
+6. S3 origin: `tinyurl-spa-prod.s3.us-east-1.amazonaws.com`
+7. Origin path: leave blank
+8. Allow private S3 bucket access: **Allow private S3 bucket access to CloudFront (Recommended)** — CloudFront will automatically update the S3 bucket policy
+9. Origin settings: **Use recommended origin settings**
+10. Cache settings: **Use recommended cache settings tailored to serving S3 content**
+11. WAF (Enable security protections): **Do not enable security protections** — $14/month not worth it for a portfolio project. AWS Shield Standard DDoS protection is free and automatic.
+12. After creation, go to **Settings → Edit** and configure:
+    - **Alternate domain names**: `tinyurl.buffden.com`
+    - **Custom SSL certificate**: `*.buffden.com`
+    - **Default root object**: `index.html`
+    - **Price class**: **Use only North America and Europe**
+    - **IPv6**: **On** (free, no downside)
+    - Click **Save changes**
 
 **Add custom error pages (required for Angular routing):**
 
-1. CloudFront → your distribution → **Error pages → Create custom error response**
-2. HTTP error code: **403** → Response page path: `/index.html` → HTTP response code: **200**
-3. Repeat for HTTP error code: **404**
+1. CloudFront → your distribution → **Error pages tab → Create custom error response**
+2. HTTP error code: **403**
+   - Customize error response: **Yes**
+   - Response page path: `/index.html`
+   - HTTP response code: **200**
+   - Click **Create**
+3. Repeat exactly the same for HTTP error code: **404**
 
 > These error pages are critical. Without them, refreshing any Angular route (e.g. `/dashboard`) will return a 403/404 from S3 instead of serving the SPA.
+
+> CloudFront automatically updates the S3 bucket policy when you select "Allow private S3 bucket access" — no manual bucket policy update needed.
+>
+> Distribution created: ID `E2JO8EQWSPGUL5`, domain `d1anlbbmfo4elu.cloudfront.net`
 
 ---
 
