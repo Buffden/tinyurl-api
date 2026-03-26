@@ -45,5 +45,4 @@ tinyurl:
   default-expiry-days: ${TINYURL_DEFAULT_EXPIRY_DAYS:180}
   short-code-min-length: ${TINYURL_SHORT_CODE_MIN_LENGTH:6}
   cors:
-    allowed-origins:
-      - "http://localhost:4200"
+    allowed-origins: "http://localhost:4200"
