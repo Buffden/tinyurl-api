@@ -342,7 +342,7 @@ mkdir -p /app
 4. IP address type: IPv4
 5. VPC: `tinyurl-prod-vpc`
 6. Subnets: select both public subnets (`tinyurl-public-1a`, `tinyurl-public-1b`)
-7. Security groups: `sg-tinyurl-alb`
+7. Security groups: `tinyurl-alb`
 8. Listeners:
    - Port 80: **Add listener** → Action: Redirect to HTTPS (443), status 301
    - Port 443: **Add listener** → Action: Forward to `tg-tinyurl-api`
@@ -405,8 +405,6 @@ mkdir -p /app
 > These error pages are critical. Without them, refreshing any Angular route (e.g. `/dashboard`) will return a 403/404 from S3 instead of serving the SPA.
 
 > CloudFront automatically updates the S3 bucket policy when you select "Allow private S3 bucket access" — no manual bucket policy update needed.
->
-> Distribution created: ID `E2JO8EQWSPGUL5`, domain `d1anlbbmfo4elu.cloudfront.net`
 
 ---
 
