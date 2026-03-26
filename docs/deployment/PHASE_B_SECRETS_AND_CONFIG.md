@@ -24,13 +24,15 @@ Go to **AWS Systems Manager → Parameter Store → Create parameter** for each:
 
 | Name | Type | Value |
 |---|---|---|
-| `/tinyurl/prod/db/url` | String | `jdbc:postgresql://<rds-endpoint>:5432/tinyurl` |
-| `/tinyurl/prod/db/username` | String | `tinyurl` |
-| `/tinyurl/prod/db/password` | SecureString | `<password you set in Phase A Step 6>` |
-| `/tinyurl/prod/base-url` | String | `https://go.buffden.com` |
+| `/tinyurl/prod/spring/datasource/username` | String | `tinyurl` |
+| `/tinyurl/prod/spring/datasource/password` | SecureString | `<password you generated in Phase A Step 6>` |
+| `/tinyurl/prod/tinyurl/base-url` | String | `https://go.buffden.com` |
 
-> Replace `<rds-endpoint>` with the endpoint from Phase A Step 6 (e.g. `tinyurl-prod.xyz.us-east-1.rds.amazonaws.com`).
 > `SecureString` encrypts the password using KMS — it will not appear in plaintext in the console.
+>
+> **Why these path names?** Spring Cloud AWS strips the `/tinyurl/prod/` prefix and converts `/` to `.` in the remaining path. So `/tinyurl/prod/spring/datasource/username` maps to `spring.datasource.username`. Wrong path names mean the app silently uses defaults and fails to connect to RDS.
+>
+> **No SSM param for the DB URL** — the URL is constructed dynamically at deploy time using `RDS_ENDPOINT` and passed as a docker-compose env var (see Step 4).
 
 ---
 
@@ -132,6 +134,7 @@ Create this file at the root of the backend repo (same level as `docker-compose.
 services:
   nginx:
     image: nginx:1.27-alpine
+    container_name: tinyurl-nginx
     ports:
       - "80:80"
     volumes:
@@ -149,11 +152,14 @@ services:
 
   app:
     image: ghcr.io/buffden/tinyurl-api:${IMAGE_TAG}
+    container_name: tinyurl-app
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_ENDPOINT}:5432/tinyurl
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_ENDPOINT}:5432/tinyurl_production_db
+    expose:
+      - "8080"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -255,12 +261,12 @@ This tells Spring Boot to load all parameters under `/tinyurl/prod/` from SSM at
 
 | SSM path | Spring property |
 |---|---|
-| `/tinyurl/prod/db/url` | `spring.datasource.url` |
-| `/tinyurl/prod/db/username` | `spring.datasource.username` |
-| `/tinyurl/prod/db/password` | `spring.datasource.password` |
-| `/tinyurl/prod/base-url` | `tinyurl.base-url` |
+| `/tinyurl/prod/spring/datasource/username` | `spring.datasource.username` |
+| `/tinyurl/prod/spring/datasource/password` | `spring.datasource.password` |
+| `/tinyurl/prod/tinyurl/base-url` | `tinyurl.base-url` |
 
-> If the SSM paths or Spring property names don't match, the app will fail to start in production. Double-check these before Phase C.
+> The datasource URL is NOT loaded from SSM — it is constructed at deploy time from `RDS_ENDPOINT` and passed as `SPRING_DATASOURCE_URL` env var via docker-compose.
+> If the SSM paths or Spring property names don't match, the app will silently use defaults and fail to connect to RDS.
 
 ---
 
@@ -294,6 +300,32 @@ ng build --configuration=production
 # Verify environment.prod.ts has the correct URL
 grep apiUrl src/environments/environment.prod.ts
 # Expected: https://go.buffden.com/api
+```
+
+---
+
+## How it all connects at runtime
+
+```text
+Browser
+  │
+  ▼
+Route 53 (go.buffden.com)
+  │
+  ▼
+ALB (HTTPS:443 → HTTP:80 to EC2)
+  │
+  ▼
+Nginx container (port 80)
+  ├── rate limits POST /api/urls
+  ├── blocks /actuator/
+  └── proxies everything else
+        │
+        ▼
+      Spring Boot container (port 8080, internal only)
+        ├── reads DB credentials from SSM (via application-prod.yaml import)
+        ├── reads DB URL from SPRING_DATASOURCE_URL env var (via docker-compose)
+        └── connects to RDS PostgreSQL
 ```
 
 **Proceed to [Phase C](PHASE_C_FIRST_MANUAL_DEPLOY.md).**
