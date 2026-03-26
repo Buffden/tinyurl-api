@@ -1,7 +1,16 @@
 # Production-specific configuration
+spring:
+  config:
+    import: "aws-parameterstore:/tinyurl/prod/"
+
 management:
   endpoints:
     web:
       exposure:
         # Production: only expose health endpoint. Metrics/prometheus require separate admin port + authentication
         include: health
+
+tinyurl:
+  cors:
+    allowed-origins:
+      - "https://tinyurl.buffden.com"
