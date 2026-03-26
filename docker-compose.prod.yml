@@ -1,0 +1,45 @@
+# docker-compose.prod.yml
+# Production only — no Postgres (using RDS), no Flyway (migrations run at deploy time)
+# Deployed on EC2, managed via SSM RunCommand
+# Required env vars on EC2: IMAGE_TAG, RDS_ENDPOINT
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: tinyurl-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /tinyurl/prod
+        awslogs-region: us-east-1
+        awslogs-stream: nginx
+
+  app:
+    image: ghcr.io/buffden/tinyurl-api:${IMAGE_TAG}
+    container_name: tinyurl-app
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_ENDPOINT}:5432/tinyurl_production_db
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /tinyurl/prod
+        awslogs-region: us-east-1
+        awslogs-stream: app
