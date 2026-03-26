@@ -25,6 +25,8 @@ repositories {
 }
 
 dependencies {
+	implementation(platform("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1"))
+	implementation("io.awspring.cloud:spring-cloud-aws-starter-parameter-store")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
