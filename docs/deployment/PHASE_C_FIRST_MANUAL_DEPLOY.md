@@ -26,16 +26,16 @@ Run from the root of the backend repo on your local machine.
 # Authenticate to GitHub Container Registry
 echo $GITHUB_TOKEN | docker login ghcr.io -u buffden --password-stdin
 
-# Build the production image
+# Build the production image — IMPORTANT: specify linux/amd64 platform
+# EC2 is x86_64. If you build on Apple Silicon (M1/M2/M3) without this flag,
+# the image will be arm64 and fail to start on EC2 with "no matching manifest" error.
 ./gradlew bootJar
-docker build -t ghcr.io/buffden/tinyurl-api:v1.0.0 .
-
-# Push to GHCR
-docker push ghcr.io/buffden/tinyurl-api:v1.0.0
+docker buildx build --platform linux/amd64 -t ghcr.io/buffden/tinyurl-api:v1.0.0 --push .
 ```
 
 > `GITHUB_TOKEN` — generate a Personal Access Token (PAT) at GitHub → Settings → Developer settings → Personal access tokens. Needs `write:packages` scope.
 > After this, the image is at `ghcr.io/buffden/tinyurl-api:v1.0.0` and is private by default.
+> Note: `docker buildx build --push` builds and pushes in one step. No separate `docker push` needed.
 
 **Make the package visible to EC2:**
 
@@ -63,6 +63,9 @@ In the terminal:
 # Switch to ubuntu user
 sudo su - ubuntu
 
+# Fix /app ownership if needed (user data script runs as root, so ubuntu can't write)
+sudo chown -R ubuntu:ubuntu /app
+
 # Create app directory
 mkdir -p /app/infra/nginx
 
@@ -81,18 +84,26 @@ echo 'export RDS_ENDPOINT=tinyurl-prod.xyz.us-east-1.rds.amazonaws.com' >> ~/.ba
 source ~/.bashrc
 ```
 
-**Option B — Use AWS S3 as a transfer mechanism:**
+**Option B — Use AWS S3 as a transfer mechanism (recommended):**
+
+SSM browser terminal mangles multi-line heredoc pastes (characters get dropped/reordered), making Option A unreliable for large files. Use S3 instead.
 
 ```bash
-# Local machine: upload files to S3
+# Local machine: upload files to S3 (run from repo root)
 aws s3 cp docker-compose.prod.yml s3://tinyurl-spa-prod/deploy/docker-compose.prod.yml
 aws s3 cp infra/nginx/nginx.prod.conf s3://tinyurl-spa-prod/deploy/nginx.prod.conf
 
 # On EC2 (via SSM Session Manager):
-aws s3 cp s3://tinyurl-spa-prod/deploy/docker-compose.prod.yml /app/docker-compose.prod.yml
+# Install AWS CLI if not present
+sudo apt-get install -y awscli
+
 mkdir -p /app/infra/nginx
+aws s3 cp s3://tinyurl-spa-prod/deploy/docker-compose.prod.yml /app/docker-compose.prod.yml
 aws s3 cp s3://tinyurl-spa-prod/deploy/nginx.prod.conf /app/infra/nginx/nginx.prod.conf
 ```
+
+> If `aws s3 cp` returns 403 Forbidden, the EC2 IAM role is missing S3 permissions.
+> Fix: AWS Console → IAM → Roles → `role-tinyurl-ec2` → Attach `AmazonS3ReadOnlyAccess`.
 
 ---
 
@@ -101,6 +112,12 @@ aws s3 cp s3://tinyurl-spa-prod/deploy/nginx.prod.conf /app/infra/nginx/nginx.pr
 In the SSM Session Manager terminal on EC2:
 
 ```bash
+# Install Docker if user data script didn't run (check with: docker --version)
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-v2
+sudo usermod -aG docker ubuntu
+newgrp docker   # apply group without logout
+
 cd /app
 
 # Set image tag
@@ -121,6 +138,32 @@ Watch for these log lines indicating successful startup:
 - `Flyway migrations completed`
 - No `ERROR` or `FATAL` lines
 
+**If the app crashes with `Could not resolve placeholder 'tinyurl.cors.allowed-origins'`:**
+
+`@Value` cannot inject a YAML list property. The `application-prod.yaml` CORS config must use a comma-separated string, not YAML list syntax:
+
+```yaml
+# WRONG — causes placeholder resolution failure
+tinyurl:
+  cors:
+    allowed-origins:
+      - "https://tinyurl.buffden.com"
+
+# CORRECT
+tinyurl:
+  cors:
+    allowed-origins: "https://tinyurl.buffden.com"
+```
+
+**If Docker logs show `AccessDeniedException` for CloudWatch Logs:**
+
+The EC2 role is missing CloudWatch permissions. Fix: AWS Console → IAM → Roles → `role-tinyurl-ec2` → Attach `CloudWatchLogsFullAccess`. Then restart:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d
+```
+
 If you see SSM Parameter Store errors, check:
 - Parameters exist with correct names in `/tinyurl/prod/`
 - EC2 IAM role has SSM read permission
@@ -135,10 +178,37 @@ If you see SSM Parameter Store errors, check:
 3. Wait for the registered EC2 to show **Healthy** status (can take up to 60s)
 
 If it stays **Unhealthy:**
-- SSH alternative: use SSM Session Manager to check `curl http://localhost:8080/actuator/health`
-- Check Docker logs: `docker compose -f docker-compose.prod.yml logs app`
+
+- Use SSM Session Manager to check: `curl http://localhost/actuator/health`
+  - If this returns `{"status":"UP"}` the app is fine — the issue is between Nginx and the health check path
+  - If this returns 403, Nginx is blocking `/actuator/health` (see fix below)
+  - If connection refused, the app hasn't started — check `docker compose -f docker-compose.prod.yml logs app`
 - Confirm Nginx is running: `docker compose -f docker-compose.prod.yml ps`
 - Confirm security group `sg-ec2` allows port 80 from `sg-alb`
+
+**Critical: ALB targets port 80 on EC2, which goes through Nginx — not directly to the app.**
+
+If Nginx has a blanket `location /actuator/ { return 403; }` block, health checks will return 403 and the target will stay Unhealthy. The fix is an exact-match location *before* the blanket block in `nginx.prod.conf`:
+
+```nginx
+# Allow ALB health checks through — MUST be before the blanket /actuator/ block
+location = /actuator/health {
+    proxy_pass http://app:8080;
+    proxy_set_header Host $host;
+}
+
+# Block all other actuator endpoints
+location /actuator/ {
+    return 403;
+}
+```
+
+After updating the nginx config, re-upload via S3 and restart the nginx container:
+
+```bash
+aws s3 cp s3://tinyurl-spa-prod/deploy/nginx.prod.conf /app/infra/nginx/nginx.prod.conf
+docker compose -f docker-compose.prod.yml restart nginx
+```
 
 ---
 
@@ -165,6 +235,29 @@ aws s3 ls s3://tinyurl-spa-prod/
 
 > `--delete` removes any stale files from previous builds.
 > `dist/browser/` is the Angular 19 output path — verify with your actual build output.
+
+**If `ng build` fails with `NG0401` during route extraction:**
+
+This is an Angular 19.2 SSR breaking change. The `main.server.ts` bootstrap function must accept and forward `BootstrapContext`:
+
+```typescript
+// src/main.server.ts — CORRECT for Angular 19.2+
+import { bootstrapApplication, BootstrapContext } from '@angular/platform-browser';
+import { AppComponent } from './app/app.component';
+import { config } from './app/app.config.server';
+
+const bootstrap = (context: BootstrapContext) => bootstrapApplication(AppComponent, config, context);
+
+export default bootstrap;
+```
+
+Without the `BootstrapContext` parameter, Angular's server platform cannot initialize and throws NG0401 for every prerender attempt.
+
+**Additional Angular 19 SSR requirements** (all must be in place):
+
+- `app.config.ts` must include `provideAnimationsAsync()` — Angular Material components (`MatTabsModule`, `MatExpansionModule`) require the `ANIMATION_MODULE_TYPE` token to be provided
+- `app.config.server.ts` must include `provideServerRoutesConfig(serverRoutes)` and `provideNoopAnimations()`
+- `app.routes.server.ts` must exist and define render modes using `RenderMode` from `@angular/ssr` — the old `data: { prerender: true }` route property is deprecated and causes NG0401
 
 ---
 
@@ -228,8 +321,14 @@ curl -I https://tinyurl.buffden.com
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| ALB health check unhealthy | App not started or crash on boot | Check `docker compose logs app` via SSM |
-| CORS error in browser | `CorsConfig.java` not applied | Verify `application-prod.yaml` has correct origin |
+| `no matching manifest for linux/amd64` on EC2 | Image built on Apple Silicon without platform flag | Rebuild with `docker buildx build --platform linux/amd64` |
+| `docker: command not found` on EC2 | User data script didn't run | `sudo apt-get install -y docker.io docker-compose-v2` |
+| `aws s3 cp` returns 403 Forbidden | EC2 role missing S3 permissions | Attach `AmazonS3ReadOnlyAccess` to `role-tinyurl-ec2` |
+| CloudWatch `AccessDeniedException` in Docker logs | EC2 role missing CloudWatch permissions | Attach `CloudWatchLogsFullAccess` to `role-tinyurl-ec2` |
+| App crash: `Could not resolve placeholder 'tinyurl.cors.allowed-origins'` | CORS config uses YAML list syntax; `@Value` requires a string | Change `allowed-origins` to comma-separated string in `application-prod.yaml` |
+| ALB health check stays Unhealthy with 403 | Nginx blocks `/actuator/` before ALB can reach app | Add `location = /actuator/health` exact-match block before the blanket `location /actuator/` block in nginx config |
+| `ng build` fails with NG0401 | `main.server.ts` missing `BootstrapContext` parameter (Angular 19.2+) | Update bootstrap function signature — see Step 5 |
+| CORS error in browser | `CorsConfig.java` not applied | Verify `application-prod.yaml` has correct origin as comma-separated string |
 | Short URL has wrong domain | Wrong SSM `base-url` | Update `/tinyurl/prod/base-url` → `https://go.buffden.com` |
 | Angular can't reach API | Wrong `environment.prod.ts` | Verify `apiUrl: 'https://go.buffden.com/api'` |
 | S3 returns 403 on SPA routes | Missing CloudFront error page config | Add 403 → `/index.html` error page in CloudFront |
