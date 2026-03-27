@@ -226,7 +226,7 @@ grep -r "go.buffden.com" dist/
 # Should find it in the compiled JS
 
 # Upload to S3
-aws s3 sync dist/browser/ s3://tinyurl-spa-prod/ --delete
+aws s3 sync dist/tinyurl-gui/browser/ s3://tinyurl-spa-prod/ --delete
 
 # Verify upload
 aws s3 ls s3://tinyurl-spa-prod/
@@ -234,7 +234,7 @@ aws s3 ls s3://tinyurl-spa-prod/
 ```
 
 > `--delete` removes any stale files from previous builds.
-> `dist/browser/` is the Angular 19 output path — verify with your actual build output.
+> Output path is `dist/tinyurl-gui/browser/` — the project name comes from `outputPath` in angular.json.
 
 **If `ng build` fails with `NG0401` during route extraction:**
 
