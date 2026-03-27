@@ -22,6 +22,7 @@
 - [ ] Step 9 — S3 bucket
 - [ ] Step 10 — CloudFront distribution
 - [ ] Step 11 — Route 53 DNS records
+- [ ] Step 12 — Cloudflare DNS migration (free DDoS + edge protection)
 
 ---
 
@@ -428,6 +429,104 @@ mkdir -p /app
 - Region: us-east-1
 - Select `tinyurl-alb`
 - Click **Create record**
+
+---
+
+## Step 12 — Cloudflare DNS Migration
+
+Moves DNS from Route 53 to Cloudflare so flood attacks are absorbed at Cloudflare's edge before CloudFront or ALB ever see the traffic — eliminating the billing impact of DDoS attacks. All AWS services stay completely unchanged.
+
+### 12a. Sign up and add domain
+
+1. Go to **cloudflare.com → Sign up → Free plan**
+2. Click **Add a Site → `buffden.com` → Free plan**
+3. Select **Import DNS records automatically** — Cloudflare scans Route 53 records
+
+### 12b. Fix imported DNS records
+
+Cloudflare's auto-import is incomplete. Manually verify and correct all records:
+
+| Type | Name | Content | Proxy |
+| --- | --- | --- | --- |
+| CNAME | `go` | `dualstack.tinyurl-alb-xxx.us-east-1.elb.amazonaws.com` | Orange (Proxied) |
+| CNAME | `tinyurl` | `d1anlbbmfo4elu.cloudfront.net` | Orange (Proxied) |
+| A | `ems` | `100.25.10.178` | Orange (Proxied) |
+| CNAME | `portfolio` | `buffden.github.io` | Grey (DNS only) |
+| CNAME | `_2a3ec5a40d53220a744f6e248e46f22b` | `_bf955b229028da621bc467ed086b9ddc.jkddzztszm.acm-validations.aws` | Grey (DNS only) |
+
+> The `go` record is likely imported as two raw A records (IPs). Delete them and add a single CNAME pointing to the ALB hostname — ALB IPs change, the hostname does not.
+>
+> The ACM validation CNAME (`_2a3ec5a...`) **must be grey cloud (DNS only)**. If proxied, AWS cannot reach it to auto-renew your SSL certificate.
+
+### 12c. Change nameservers at Namecheap
+
+Only do this after 12b is complete and all records are verified.
+
+1. Log in to **namecheap.com → Domain List → Manage → buffden.com**
+2. Under **Nameservers → Custom DNS**
+3. Replace all 4 `awsdns` nameservers with the 2 Cloudflare nameservers shown in your dashboard
+4. Save — propagation takes 5–30 minutes
+
+**Rollback:** restore the 4 Route 53 nameservers at Namecheap at any time. The Route 53 hosted zone is never deleted.
+
+### 12d. Configure SSL and security settings
+
+**SSL/TLS → Overview:** set mode to **Full**
+
+> Do not use Flexible — CloudFront enforces HTTPS and Flexible causes an infinite redirect loop.
+
+**SSL/TLS → Edge Certificates:**
+
+- Always Use HTTPS → **On**
+- Minimum TLS Version → **TLS 1.2**
+
+**Security → Settings:**
+
+- Security Level → **Medium**
+- Browser Integrity Check → **On**
+
+### 12e. Add rate limit rule
+
+**Security → WAF → Rate limiting rules → Create rule:**
+
+```text
+Rule name:      Protect URL creation endpoint
+Field:          URI Path   equals   /api/urls
+Characteristics: IP address
+Rate:           20 requests per 10 seconds
+Action:         Block
+Duration:       10 seconds (free plan maximum)
+```
+
+> Free plan allows 1 rate limiting rule. The SPA (`tinyurl.buffden.com`) does not need one — it is served from CloudFront edge cache and flood traffic never reaches S3 or EC2.
+
+### 12f. Verify Cloudflare is active
+
+```bash
+# Nameservers should show Cloudflare
+nslookup -type=NS buffden.com
+
+# cf-ray header confirms traffic flows through Cloudflare
+curl -I https://go.buffden.com/actuator/health
+# Look for: cf-ray: xxxxxxxx-XXX
+```
+
+### Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Redirect loop on `tinyurl.buffden.com` | SSL mode set to Flexible | Change SSL mode to Full |
+| ACM certificate fails to renew | ACM validation CNAME is proxied | Set `_2a3ec5a...` record to grey cloud |
+| `cf-ray` header missing | Propagation pending or record is grey cloud | Wait 30 min; verify orange cloud on `go` and `tinyurl` records |
+| Site unreachable after nameserver switch | Record missing in Cloudflare | Restore Route 53 nameservers at Namecheap; add missing record; switch again |
+
+### Under Attack Mode
+
+If you detect an active flood: **Cloudflare dashboard → your domain → Quick Actions → Enable Under Attack Mode**. Disables automatically when toggled off.
+
+### Optional cleanup
+
+Once Cloudflare has been running without issues for 24 hours, delete the Route 53 hosted zone to stop the $0.50/month fee. Cloudflare is now the authoritative DNS.
 
 ---
 
