@@ -1,6 +1,5 @@
 package com.tinyurl.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -12,13 +11,16 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${tinyurl.cors.allowed-origins}")
-    private List<String> allowedOrigins;
+    private final AppProperties appProperties;
+
+    public CorsConfig(AppProperties appProperties) {
+        this.appProperties = appProperties;
+    }
 
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedOrigins(appProperties.cors().allowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         config.setAllowedHeaders(List.of("Content-Type", "Accept"));
         config.setAllowCredentials(false);

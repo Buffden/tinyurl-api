@@ -12,4 +12,5 @@ management:
 
 tinyurl:
   cors:
-    allowed-origins: "https://tinyurl.buffden.com"
+    allowed-origins:
+      - "https://tinyurl.buffden.com"
