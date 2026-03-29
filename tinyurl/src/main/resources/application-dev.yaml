@@ -1,0 +1,9 @@
+# Development-only overrides.
+# Activate with: SPRING_PROFILES_ACTIVE=dev
+# Never use this profile in production or CI/CD environments.
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus

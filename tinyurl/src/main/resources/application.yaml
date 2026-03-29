@@ -29,8 +29,8 @@ management:
   endpoints:
     web:
       exposure:
-        # Default: expose metrics for dev/test. Restricted in production via application-prod.yaml
-        include: health,metrics,prometheus
+        # Restricted to health by default. Metrics/prometheus enabled via application-dev.yaml
+        include: health
   metrics:
     tags:
       application: ${spring.application.name}
@@ -45,4 +45,5 @@ tinyurl:
   default-expiry-days: ${TINYURL_DEFAULT_EXPIRY_DAYS:180}
   short-code-min-length: ${TINYURL_SHORT_CODE_MIN_LENGTH:6}
   cors:
-    allowed-origins: "http://localhost:4200"
+    allowed-origins:
+      - "http://localhost:4200"
