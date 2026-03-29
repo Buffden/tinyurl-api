@@ -40,33 +40,56 @@ The EC2 instance never needs a public SSH port open. SSM agent (already installe
 
 ## Step 1 — Add GitHub Secrets
 
-### Backend repo (`buffden/tinyurl`)
+Only one secret is stored in GitHub — everything else lives in AWS Parameter Store.
 
-Go to GitHub → repository → **Settings → Secrets and variables → Actions → New repository secret**:
+### Backend repo (`buffden/tinyurl-api`)
+
+**GitHub → repository → Settings → Secrets and variables → Actions → New repository secret:**
 
 | Secret name | Value |
 |---|---|
-| `EC2_INSTANCE_ID` | Your EC2 instance ID (e.g. `i-0abc1234def56789`) |
-| `RDS_ENDPOINT` | RDS hostname (e.g. `tinyurl-prod.xyz.us-east-1.rds.amazonaws.com`) |
 | `AWS_ROLE_ARN` | `arn:aws:iam::<account-id>:role/role-github-actions-tinyurl` |
-
-> Find EC2 instance ID: AWS Console → EC2 → Instances → click your instance → copy Instance ID
-> Find RDS endpoint: AWS Console → RDS → Databases → `tinyurl-prod` → Connectivity → Endpoint
 
 ### Frontend repo (`buffden/tinyurl-gui`)
 
 | Secret name | Value |
 |---|---|
-| `CF_DIST_ID` | CloudFront distribution ID (e.g. `E1ABC2DEF3GH4IJ`) |
 | `AWS_ROLE_ARN` | `arn:aws:iam::<account-id>:role/role-github-actions-tinyurl` |
 
+> **Important:** `AWS_ROLE_ARN` must be the **IAM role ARN** — not the OIDC provider ARN.
+> - ✅ Correct: `arn:aws:iam::911167927589:role/role-github-actions-tinyurl`
+> - ❌ Wrong:   `arn:aws:iam::911167927589:oidc-provider/token.actions.githubusercontent.com`
+
+### AWS Parameter Store entries (fetched at runtime by the workflows)
+
+| Parameter path | Used by |
+|---|---|
+| `/tinyurl/cicd/ec2-instance-id` | Backend deploy — SSM RunCommand target |
+| `/tinyurl/cicd/rds-endpoint` | Backend deploy — passed to EC2 on deploy |
+| `/tinyurl/cicd/cf-dist-id` | Frontend deploy — CloudFront invalidation |
+
+> Find EC2 instance ID: AWS Console → EC2 → Instances → copy Instance ID
+> Find RDS endpoint: AWS Console → RDS → Databases → `tinyurl-prod` → Connectivity → Endpoint
 > Find CloudFront distribution ID: AWS Console → CloudFront → Distributions → copy ID column
+
+---
+
+## Step 1b — GitHub Repository Settings
+
+### Backend repo only
+
+**GitHub → buffden/tinyurl-api → Settings → Actions → General → Workflow permissions**
+
+Set to: **Read and write permissions** → Save.
+
+This is required for the `GITHUB_TOKEN` to push Docker images to GHCR (`ghcr.io/buffden/tinyurl-api`).
+The frontend repo does not need this — it only pushes to S3 via the IAM role.
 
 ---
 
 ## Step 2 — Backend Deploy Workflow
 
-Create `.github/workflows/deploy.yml` in the **backend repo** (`buffden/tinyurl`):
+Create `.github/workflows/deploy.yml` in the **backend repo** (`buffden/tinyurl-api`):
 
 ```yaml
 name: Deploy API
@@ -333,6 +356,82 @@ Frontend repo — merged to main
       ├── aws s3 sync → tinyurl-spa-prod
       └── cloudfront create-invalidation → wait for completion
 ```
+
+---
+
+---
+
+## Gotchas — Issues Hit During Setup
+
+### 1. `AWS_ROLE_ARN` secret must be the IAM role ARN, not the OIDC provider ARN
+
+The OIDC provider ARN and the role ARN look similar — easy to copy the wrong one.
+
+- ❌ OIDC provider: `arn:aws:iam::911167927589:oidc-provider/token.actions.githubusercontent.com`
+- ✅ IAM role: `arn:aws:iam::911167927589:role/role-github-actions-tinyurl`
+
+---
+
+### 2. IAM trust policy `sub` condition is case-sensitive
+
+`StringLike` in IAM is case-sensitive. The GitHub org name in the OIDC token must match exactly.
+Check your GitHub org/username case and use it exactly in the trust policy:
+
+```json
+"repo:Buffden/tinyurl-api:*",
+"repo:Buffden/tinyurl-gui:*"
+```
+
+If you use lowercase when your org is capitalised (or vice versa), OIDC will silently fail with `Not authorized to perform sts:AssumeRoleWithWebIdentity`.
+
+---
+
+### 3. Trust policy must use `*` wildcard, not `ref:refs/heads/main`
+
+Using `ref:refs/heads/main` blocks `workflow_dispatch` runs from any other branch.
+Use `*` to allow all branches and trigger types:
+
+```json
+"repo:Buffden/tinyurl-api:*"
+```
+
+---
+
+### 4. Backend repo requires "Read and write permissions" for GHCR
+
+**GitHub → buffden/tinyurl-api → Settings → Actions → General → Workflow permissions → Read and write permissions**
+
+Without this, the `GITHUB_TOKEN` cannot push to `ghcr.io/buffden/tinyurl-api` even with `packages: write` in the job permissions. The frontend repo does not need this setting.
+
+---
+
+### 7. GHCR package must be linked to the repository
+
+If the container image was ever pushed manually (e.g. with a PAT or local `docker push`), the resulting GHCR package is not automatically linked to the repository. The `GITHUB_TOKEN` can only push to packages that are explicitly connected to the repo it runs from.
+
+**Symptom:** Build succeeds, layers start uploading, then `denied: permission_denied: write_package`.
+
+**Fix:**
+
+1. Go to **GitHub → buffden → Packages → tinyurl-api → Package settings**
+2. Scroll to **"Manage Actions access"**
+3. Click **"Add Repository"** → select `buffden/tinyurl-api` → set role to **Write**
+
+This only needs to be done once. After linking, all future workflow runs can push without issue.
+
+---
+
+### 5. Angular build output path is `dist/tinyurl-gui/browser/`, not `dist/browser/`
+
+Angular outputs to `dist/<project-name>/browser/`. The project name is defined in `angular.json`.
+For this project: `dist/tinyurl-gui/browser/`. Using the wrong path causes the artifact upload to silently succeed with zero files, and the download step fails with `Artifact not found`.
+
+---
+
+### 6. CloudFront distribution ID in Parameter Store must be the real ID
+
+`/tinyurl/cicd/cf-dist-id` must contain the actual distribution ID (e.g. `E2JO8EQWSPGUL5`), not a placeholder.
+Find it: **AWS Console → CloudFront → Distributions → ID column**.
 
 ---
 
