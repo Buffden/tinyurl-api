@@ -223,7 +223,7 @@ This role lets GitHub Actions deploy without storing any AWS keys.
       "Condition": {
         "StringLike": {
           "token.actions.githubusercontent.com:sub": [
-            "repo:Buffden/tinyurl:*",
+            "repo:Buffden/tinyurl-api:*",
             "repo:Buffden/tinyurl-gui:*"
           ]
         },
