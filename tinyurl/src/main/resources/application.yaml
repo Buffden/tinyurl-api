@@ -42,6 +42,7 @@ management:
 
 tinyurl:
   base-url: ${TINYURL_BASE_URL:http://localhost}
+  frontend-url: ${TINYURL_FRONTEND_URL:http://localhost:4200}
   default-expiry-days: ${TINYURL_DEFAULT_EXPIRY_DAYS:180}
   short-code-min-length: ${TINYURL_SHORT_CODE_MIN_LENGTH:6}
   cors:
