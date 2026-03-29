@@ -28,6 +28,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_ENDPOINT}:5432/tinyurl_production_db
+      TINYURL_FRONTEND_URL: https://tinyurl.buffden.com
     expose:
       - "8080"
     healthcheck:
