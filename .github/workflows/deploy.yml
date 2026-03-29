@@ -43,16 +43,25 @@ jobs:
     needs: build-test
     runs-on: ubuntu-latest
 
-    env:
-      POSTGRES_USER: tinyurl_ci
-      POSTGRES_PASSWORD: ci_smoke_postgres_pass
-      SPRING_DATASOURCE_USERNAME: tinyurl_appuser_ci
-      SPRING_DATASOURCE_PASSWORD: ci_smoke_appuser_pass
-      SPRING_FLYWAY_USER: tinyurl_ci
-      SPRING_FLYWAY_PASSWORD: ci_smoke_postgres_pass
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Generate ephemeral CI credentials
+        run: |
+          PG_PASS=$(openssl rand -hex 16)
+          APP_PASS=$(openssl rand -hex 16)
+          echo "POSTGRES_USER=tinyurl_ci" >> $GITHUB_ENV
+          echo "POSTGRES_PASSWORD<<EOF" >> $GITHUB_ENV
+          echo "$PG_PASS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "SPRING_DATASOURCE_USERNAME=tinyurl_appuser_ci" >> $GITHUB_ENV
+          echo "SPRING_DATASOURCE_PASSWORD<<EOF" >> $GITHUB_ENV
+          echo "$APP_PASS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "SPRING_FLYWAY_USER=tinyurl_ci" >> $GITHUB_ENV
+          echo "SPRING_FLYWAY_PASSWORD<<EOF" >> $GITHUB_ENV
+          echo "$PG_PASS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Build and start stack
         run: docker compose up -d --build
@@ -99,8 +108,12 @@ jobs:
           RDS_ENDPOINT=$(aws ssm get-parameter \
             --name "/tinyurl/cicd/rds-endpoint" \
             --query "Parameter.Value" --output text)
-          echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID" >> $GITHUB_ENV
-          echo "RDS_ENDPOINT=$RDS_ENDPOINT" >> $GITHUB_ENV
+          echo "EC2_INSTANCE_ID<<EOF" >> $GITHUB_ENV
+          echo "$EC2_INSTANCE_ID" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "RDS_ENDPOINT<<EOF" >> $GITHUB_ENV
+          echo "$RDS_ENDPOINT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
