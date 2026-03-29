@@ -38,7 +38,7 @@ class UrlServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new UrlServiceImpl(urlRepository, base62Encoder, new AppProperties("http://localhost", 180, 6, null));
+        service = new UrlServiceImpl(urlRepository, base62Encoder, new AppProperties("http://localhost", "http://localhost:4200", 180, 6, null));
     }
 
     @Test
