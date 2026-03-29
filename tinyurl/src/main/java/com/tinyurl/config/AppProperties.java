@@ -7,6 +7,7 @@ import java.util.List;
 @ConfigurationProperties(prefix = "tinyurl")
 public record AppProperties(
     String baseUrl,
+    String frontendUrl,
     Integer defaultExpiryDays,
     Integer shortCodeMinLength,
     Cors cors
