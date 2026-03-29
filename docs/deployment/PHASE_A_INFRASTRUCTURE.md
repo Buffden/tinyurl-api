@@ -223,8 +223,8 @@ This role lets GitHub Actions deploy without storing any AWS keys.
       "Condition": {
         "StringLike": {
           "token.actions.githubusercontent.com:sub": [
-            "repo:buffden/tinyurl:ref:refs/heads/main",
-            "repo:buffden/tinyurl-gui:ref:refs/heads/main"
+            "repo:Buffden/tinyurl:*",
+            "repo:Buffden/tinyurl-gui:*"
           ]
         },
         "StringEquals": {
@@ -237,7 +237,8 @@ This role lets GitHub Actions deploy without storing any AWS keys.
 ```
 
 > Replace `<account-id>` with your 12-digit AWS account ID.
-> The `StringLike` condition means only the `main` branch of your two repos can assume this role.
+> The `*` wildcard allows any branch and trigger type (push, workflow_dispatch, etc.) for both repos.
+> If you want to lock down to `main` only after testing, replace `*` with `ref:refs/heads/main`.
 
 ---
 
