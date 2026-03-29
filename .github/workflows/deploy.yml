@@ -110,17 +110,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t ghcr.io/buffden/tinyurl-api:${{ github.sha }} tinyurl/
-          docker push ghcr.io/buffden/tinyurl-api:${{ github.sha }}
+          docker build -t ghcr.io/buffden/tinyurl-api:$IMAGE_TAG tinyurl/
+          docker push ghcr.io/buffden/tinyurl-api:$IMAGE_TAG
 
       - name: Deploy via SSM RunCommand
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --parameters "commands=[
-              \"export IMAGE_TAG=${{ github.sha }}\",
+              \"export IMAGE_TAG=$IMAGE_TAG\",
               \"export RDS_ENDPOINT=$RDS_ENDPOINT\",
               \"cd /app\",
               \"docker compose -f docker-compose.prod.yml pull\",
