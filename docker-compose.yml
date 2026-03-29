@@ -30,8 +30,10 @@ services:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tinyurl
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-tinyurl}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-tinyurl}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:?SPRING_DATASOURCE_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD is required}
+      SPRING_FLYWAY_USER: ${SPRING_FLYWAY_USER:?SPRING_FLYWAY_USER is required}
+      SPRING_FLYWAY_PASSWORD: ${SPRING_FLYWAY_PASSWORD:?SPRING_FLYWAY_PASSWORD is required}
       SERVER_PORT: 8080
       TINYURL_BASE_URL: http://localhost:8080
     expose:
@@ -51,8 +53,10 @@ services:
     container_name: tinyurl-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tinyurl}
-      POSTGRES_USER: ${POSTGRES_USER:-tinyurl}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tinyurl}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:?SPRING_DATASOURCE_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD is required}
       PGDATA: /var/lib/postgresql/data/pgdata
     command:
       - postgres
@@ -66,7 +70,7 @@ services:
     networks:
       - app_internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"${POSTGRES_USER:-tinyurl}\" -d \"${POSTGRES_DB:-tinyurl}\""]
+      test: ["CMD-SHELL", "pg_isready -U \"${POSTGRES_USER}\" -d \"${POSTGRES_DB:-tinyurl}\""]
       interval: 10s
       timeout: 5s
       retries: 5
