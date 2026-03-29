@@ -1,61 +1,145 @@
 # TinyURL — Production-Grade URL Shortener
 
-TinyURL is a single-region, production-oriented URL shortener system designed with scalability, reliability, and architectural evolution in mind.
+A single-region, production-oriented URL shortener built with Spring Boot and Angular, deployed on AWS.
 
-This repository implements the service layer, while architectural evolution (v1 → v2 → future) is documented under `docs/architecture/`.
+- **Frontend:** [tinyurl.buffden.com](https://tinyurl.buffden.com) — Angular SPA on S3 + CloudFront
+- **Backend / Short links:** [go.buffden.com](https://go.buffden.com) — Spring Boot on EC2 behind ALB
 
----
-
-## Goals
-
-This project demonstrates:
-
-- Requirements-first system design
-- Clean architectural evolution (v1 → v2)
-- Production-ready service structure
-- Scalable redirect-heavy workload handling
-- Industrial Git hygiene and ADR usage
-
-It is intentionally built as a realistic service, not a toy implementation.
+![Demo](docs/media/demo/tinyurl-demo.gif)
 
 ---
 
-## Version Overview
+## Architecture
 
-### v1 — Baseline Single-Region System
+### v1 — Baseline (Implemented)
 
-<table><tr>
-<td valign="top">
-
-- Base62 encoded short codes
-- DB-backed ID generation
-- Stateless application servers
-- HTTP 301/302 support
+- Base62 encoded short codes (6–8 chars)
+- DB-backed ID generation via PostgreSQL sequence
+- Stateless Spring Boot application server
+- HTTP 301 (permanent) or 302 (expiring) redirects
 - Optional expiration (default 180 days)
-- No caching
-- No analytics
-- No authentication
+- Flyway-managed schema migrations
+- Prometheus metrics + structured JSON logging
 
-Focus: correctness + simplicity.
-
-</td>
-<td><a href="diagrams/docs/architecture/00-baseline/v1/url-shortener-v1-hld.svg"><img src="diagrams/docs/architecture/00-baseline/v1/url-shortener-v1-hld.svg" width="100%" alt="v1 HLD"></a></td>
-</tr></table>
+[![v1 HLD](diagrams/docs/architecture/00-baseline/v1/url-shortener-v1-hld.svg)](diagrams/docs/architecture/00-baseline/v1/url-shortener-v1-hld.svg)
 
 ### v2 — Scale & Abuse Resistance (Planned)
 
-<table><tr>
-<td valign="top">
-
-- Redis cache (cache-aside)
-- Negative caching
+- Redis cache (cache-aside pattern)
+- Negative caching for invalid codes
 - Rate limiting (token bucket)
 - Soft delete support
 - Custom aliases (feature-flagged)
-- Observability improvements
+- Enhanced observability
 
-</td>
-<td><a href="diagrams/docs/architecture/00-baseline/v2/url-shortener-v2-hld.svg"><img src="diagrams/docs/architecture/00-baseline/v2/url-shortener-v2-hld.svg" width="100%" alt="v2 HLD"></a></td>
-</tr></table>
+[![v2 HLD](diagrams/docs/architecture/00-baseline/v2/url-shortener-v2-hld.svg)](diagrams/docs/architecture/00-baseline/v2/url-shortener-v2-hld.svg)
 
 ---
+
+## Stack
+
+| Layer | Technology |
+| --- | --- |
+| Backend | Spring Boot 3.5, Java 21, Gradle |
+| Frontend | Angular 19, Angular Material, SSR |
+| Database | PostgreSQL 16 |
+| Migrations | Flyway |
+| Reverse proxy | Nginx |
+| Containerization | Docker, Docker Compose |
+| Cloud | AWS (EC2, RDS, ALB, S3, CloudFront, Route 53, SSM) |
+| CI/CD | GitHub Actions → GHCR → EC2 via SSM |
+| Observability | Micrometer, Prometheus, CloudWatch |
+
+---
+
+## API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/urls` | Shorten a URL |
+| `GET` | `/{shortCode}` | Redirect to original URL |
+| `GET` | `/actuator/health` | Health check |
+| `GET` | `/actuator/prometheus` | Metrics |
+
+---
+
+## Running Locally
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Java 21 (for running backend without Docker)
+- Node 20+ (for running frontend without Docker)
+
+### Full stack (backend + database + nginx)
+
+```bash
+# Copy and fill in required env vars
+cp .env.example .env
+
+docker compose up --build
+```
+
+App available at `http://localhost:8080`.
+
+### Backend only (with local Postgres)
+
+```bash
+cd tinyurl
+./gradlew bootRun
+```
+
+Backend runs on `http://localhost:8080` by default.
+
+### Run backend tests
+
+```bash
+cd tinyurl
+./gradlew test
+```
+
+> Tests use Testcontainers — Docker must be running.
+
+---
+
+## Environments
+
+| Environment | How to run | URL |
+| --- | --- | --- |
+| Local (full stack) | `docker compose up` from repo root | `http://localhost:8080` |
+| Local (backend only) | `./gradlew bootRun` in `tinyurl/` | `http://localhost:8080` |
+| Local (frontend dev) | See [tinyurl-gui/README.md](tinyurl-gui/README.md) | `http://localhost:4200` |
+| Production | Auto-deploy on merge to `main` | [go.buffden.com](https://go.buffden.com) |
+
+---
+
+## Project Structure
+
+```text
+tinyurl/                # Spring Boot backend
+tinyurl-gui/            # Angular frontend
+infra/
+  nginx/                # Nginx configs (dev + prod)
+  postgres/             # DB init scripts
+docs/
+  architecture/         # ADRs and architecture docs
+  deployment/           # AWS deployment phases (A–F)
+diagrams/               # Architecture diagrams (SVG)
+docker-compose.yml      # Local dev stack
+docker-compose.prod.yml # Production stack (no Postgres — uses RDS)
+```
+
+---
+
+## Deployment
+
+Production runs on AWS (`us-east-1`). See [`docs/deployment/`](docs/deployment/README.md) for the full deployment runbook (infrastructure provisioning, secrets, CI/CD, observability, hardening).
+
+```text
+Route 53
+  tinyurl.buffden.com  →  CloudFront  →  S3 (Angular SPA)
+  go.buffden.com       →  ALB  →  EC2 (Nginx + Spring Boot)  →  RDS PostgreSQL
+```
+
+Docker image: `ghcr.io/buffden/tinyurl-api`
+Deploy trigger: merge to `main` via GitHub Actions
