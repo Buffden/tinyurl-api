@@ -24,11 +24,15 @@ Go to **AWS Systems Manager → Parameter Store → Create parameter** for each:
 
 | Name | Type | Value |
 |---|---|---|
-| `/tinyurl/prod/spring/datasource/username` | String | `tinyurl` |
-| `/tinyurl/prod/spring/datasource/password` | SecureString | `<password you generated in Phase A Step 6>` |
+| `/tinyurl/prod/spring/datasource/username` | String | `tinyurl_appuser` |
+| `/tinyurl/prod/spring/datasource/password` | SecureString | `<tinyurl_appuser password>` |
+| `/tinyurl/prod/spring/flyway/user` | String | `tinyurl` |
+| `/tinyurl/prod/spring/flyway/password` | SecureString | `<master user password from Phase A Step 6>` |
 | `/tinyurl/prod/tinyurl/base-url` | String | `https://go.buffden.com` |
 
 > `SecureString` encrypts the password using KMS — it will not appear in plaintext in the console.
+>
+> **Why separate datasource and flyway credentials?** Spring Boot uses `spring.flyway.user` for Flyway migrations (DDL) and `spring.datasource.username` for all runtime queries. `tinyurl_appuser` has DML-only access; the master user `tinyurl` retains DDL access for migrations. See `docs/security/DB_LEAST_PRIVILEGE.md` for the full setup.
 >
 > **Why these path names?** Spring Cloud AWS strips the `/tinyurl/prod/` prefix and converts `/` to `.` in the remaining path. So `/tinyurl/prod/spring/datasource/username` maps to `spring.datasource.username`. Wrong path names mean the app silently uses defaults and fails to connect to RDS.
 >
@@ -66,6 +70,7 @@ public class CorsConfig {
         config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         config.setAllowedHeaders(List.of("Content-Type", "Accept"));
+        config.setAllowCredentials(false);
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -200,7 +205,13 @@ http {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-        # Block direct access to actuator endpoints from outside
+        # Allow ALB health checks — MUST be before the blanket /actuator/ block
+        location = /actuator/health {
+            proxy_pass http://app:8080;
+            proxy_set_header Host $host;
+        }
+
+        # Block all other actuator endpoints from outside
         location /actuator/ {
             return 403;
         }
@@ -263,6 +274,8 @@ This tells Spring Boot to load all parameters under `/tinyurl/prod/` from SSM at
 |---|---|
 | `/tinyurl/prod/spring/datasource/username` | `spring.datasource.username` |
 | `/tinyurl/prod/spring/datasource/password` | `spring.datasource.password` |
+| `/tinyurl/prod/spring/flyway/user` | `spring.flyway.user` |
+| `/tinyurl/prod/spring/flyway/password` | `spring.flyway.password` |
 | `/tinyurl/prod/tinyurl/base-url` | `tinyurl.base-url` |
 
 > The datasource URL is NOT loaded from SSM — it is constructed at deploy time from `RDS_ENDPOINT` and passed as `SPRING_DATASOURCE_URL` env var via docker-compose.
