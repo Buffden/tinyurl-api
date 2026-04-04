@@ -104,16 +104,16 @@ jobs:
         run: |
           EC2_INSTANCE_ID=$(aws ssm get-parameter \
             --name "/tinyurl/cicd/ec2-instance-id" \
+            --with-decryption \
             --query "Parameter.Value" --output text)
           RDS_ENDPOINT=$(aws ssm get-parameter \
             --name "/tinyurl/cicd/rds-endpoint" \
+            --with-decryption \
             --query "Parameter.Value" --output text)
-          echo "EC2_INSTANCE_ID<<EOF" >> $GITHUB_ENV
-          echo "$EC2_INSTANCE_ID" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          echo "RDS_ENDPOINT<<EOF" >> $GITHUB_ENV
-          echo "$RDS_ENDPOINT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "::add-mask::$EC2_INSTANCE_ID"
+          echo "::add-mask::$RDS_ENDPOINT"
+          echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID" >> $GITHUB_ENV
+          echo "RDS_ENDPOINT=$RDS_ENDPOINT" >> $GITHUB_ENV
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
