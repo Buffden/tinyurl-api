@@ -133,6 +133,12 @@ jobs:
           docker build -t ghcr.io/buffden/tinyurl-api:$IMAGE_TAG tinyurl/
           docker push ghcr.io/buffden/tinyurl-api:$IMAGE_TAG
 
+      - name: Ensure EC2 instance is running
+        run: |
+          aws ec2 start-instances --instance-ids "$EC2_INSTANCE_ID" 2>/dev/null || true
+          aws ec2 wait instance-running --instance-ids "$EC2_INSTANCE_ID"
+          sleep 15
+
       - name: Deploy via SSM RunCommand
         env:
           IMAGE_TAG: ${{ github.sha }}
