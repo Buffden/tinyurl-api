@@ -50,6 +50,8 @@ jobs:
         run: |
           PG_PASS=$(openssl rand -hex 16)
           APP_PASS=$(openssl rand -hex 16)
+          echo "::add-mask::$PG_PASS"
+          echo "::add-mask::$APP_PASS"
           echo "POSTGRES_USER=tinyurl_ci" >> $GITHUB_ENV
           echo "POSTGRES_PASSWORD<<EOF" >> $GITHUB_ENV
           echo "$PG_PASS" >> $GITHUB_ENV
@@ -105,11 +107,13 @@ jobs:
           EC2_INSTANCE_ID=$(aws ssm get-parameter \
             --name "/tinyurl/cicd/ec2-instance-id" \
             --with-decryption \
-            --query "Parameter.Value" --output text)
+            --query "Parameter.Value" --output text 2>/dev/null) \
+            || { echo "Failed to fetch instance ID from SSM"; exit 1; }
           RDS_ENDPOINT=$(aws ssm get-parameter \
             --name "/tinyurl/cicd/rds-endpoint" \
             --with-decryption \
-            --query "Parameter.Value" --output text)
+            --query "Parameter.Value" --output text 2>/dev/null) \
+            || { echo "Failed to fetch RDS endpoint from SSM"; exit 1; }
           echo "::add-mask::$EC2_INSTANCE_ID"
           echo "::add-mask::$RDS_ENDPOINT"
           echo "EC2_INSTANCE_ID=$EC2_INSTANCE_ID" >> $GITHUB_ENV
