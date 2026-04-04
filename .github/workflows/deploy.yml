@@ -135,9 +135,19 @@ jobs:
 
       - name: Start EC2 and wait for SSM agent
         run: |
-          aws ec2 start-instances --instance-ids "$EC2_INSTANCE_ID" 2>/dev/null || true
-          aws ec2 wait instance-running --instance-ids "$EC2_INSTANCE_ID"
-          echo "Instance is running, waiting for SSM agent to come online..."
+          STATE=$(aws ec2 describe-instances \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --query "Reservations[0].Instances[0].State.Name" \
+            --output text)
+          if [ "$STATE" != "running" ]; then
+            echo "Instance is $STATE — starting it"
+            aws ec2 start-instances --instance-ids "$EC2_INSTANCE_ID"
+            aws ec2 wait instance-running --instance-ids "$EC2_INSTANCE_ID"
+            echo "STARTED_BY_PIPELINE=true" >> $GITHUB_ENV
+          else
+            echo "Instance already running — will not stop after deploy"
+          fi
+          echo "Waiting for SSM agent to come online..."
           for i in {1..20}; do
             SSM_STATUS=$(aws ssm describe-instance-information \
               --filters "Key=InstanceIds,Values=$EC2_INSTANCE_ID" \
@@ -197,7 +207,7 @@ jobs:
           exit 1
 
       - name: Stop EC2 instance
-        if: always() && env.EC2_INSTANCE_ID != ''
+        if: always() && env.STARTED_BY_PIPELINE == 'true'
         run: |
           aws ec2 stop-instances --instance-ids "$EC2_INSTANCE_ID"
           echo "EC2 instance stopped"
