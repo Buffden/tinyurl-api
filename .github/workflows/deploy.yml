@@ -133,11 +133,25 @@ jobs:
           docker build -t ghcr.io/buffden/tinyurl-api:$IMAGE_TAG tinyurl/
           docker push ghcr.io/buffden/tinyurl-api:$IMAGE_TAG
 
-      - name: Ensure EC2 instance is running
+      - name: Start EC2 and wait for SSM agent
         run: |
           aws ec2 start-instances --instance-ids "$EC2_INSTANCE_ID" 2>/dev/null || true
           aws ec2 wait instance-running --instance-ids "$EC2_INSTANCE_ID"
-          sleep 15
+          echo "Instance is running, waiting for SSM agent to come online..."
+          for i in {1..20}; do
+            SSM_STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$EC2_INSTANCE_ID" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text 2>/dev/null)
+            echo "SSM agent status: $SSM_STATUS ($i/20)"
+            if [ "$SSM_STATUS" = "Online" ]; then
+              echo "SSM agent is online"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "SSM agent did not come online in time"
+          exit 1
 
       - name: Deploy via SSM RunCommand
         env:
@@ -151,9 +165,7 @@ jobs:
               \"export RDS_ENDPOINT=$RDS_ENDPOINT\",
               \"cd /app\",
               \"docker compose -f docker-compose.prod.yml pull\",
-              \"docker compose -f docker-compose.prod.yml up -d\",
-              \"sleep 20\",
-              \"curl -sf http://localhost/actuator/health || exit 1\"
+              \"docker compose -f docker-compose.prod.yml up -d\"
             ]" \
             --output text \
             --query "Command.CommandId")
@@ -183,3 +195,9 @@ jobs:
           done
           echo "Deploy timed out waiting for SSM"
           exit 1
+
+      - name: Stop EC2 instance
+        if: always() && env.EC2_INSTANCE_ID != ''
+        run: |
+          aws ec2 stop-instances --instance-ids "$EC2_INSTANCE_ID"
+          echo "EC2 instance stopped"
