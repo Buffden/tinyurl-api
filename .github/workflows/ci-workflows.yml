@@ -51,6 +51,8 @@ jobs:
         run: |
           PG_PASS=$(openssl rand -hex 16)
           APP_PASS=$(openssl rand -hex 16)
+          echo "::add-mask::$PG_PASS"
+          echo "::add-mask::$APP_PASS"
           echo "POSTGRES_USER=tinyurl_ci" >> $GITHUB_ENV
           echo "POSTGRES_PASSWORD<<EOF" >> $GITHUB_ENV
           echo "$PG_PASS" >> $GITHUB_ENV
@@ -80,6 +82,8 @@ jobs:
         run: |
           PG_PASS=$(openssl rand -hex 16)
           APP_PASS=$(openssl rand -hex 16)
+          echo "::add-mask::$PG_PASS"
+          echo "::add-mask::$APP_PASS"
           echo "POSTGRES_USER=tinyurl_ci" >> $GITHUB_ENV
           echo "POSTGRES_PASSWORD<<EOF" >> $GITHUB_ENV
           echo "$PG_PASS" >> $GITHUB_ENV
