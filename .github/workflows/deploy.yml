@@ -89,7 +89,7 @@ jobs:
     needs: [build-test, compose-smoke]
     runs-on: ubuntu-latest
     permissions:
-      id-token: write   # Required for OIDC
+      id-token: write   # Required for OIDC and cosign keyless signing
       contents: read
       packages: write   # Required for GHCR push
 
@@ -126,12 +126,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
       - name: Build and push Docker image
+        id: build-push
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t ghcr.io/buffden/tinyurl-api:$IMAGE_TAG tinyurl/
           docker push ghcr.io/buffden/tinyurl-api:$IMAGE_TAG
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/buffden/tinyurl-api:$IMAGE_TAG)
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Sign Docker image with cosign (keyless)
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cosign sign --yes ghcr.io/buffden/tinyurl-api@$(docker inspect \
+            --format='{{index .RepoDigests 0}}' \
+            ghcr.io/buffden/tinyurl-api:$IMAGE_TAG | cut -d@ -f2)
 
       - name: Wait for SSM agent to come online
         run: |
