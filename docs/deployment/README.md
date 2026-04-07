@@ -25,10 +25,10 @@
 
 ```
                     ┌─────────────────────────────────────────────┐
-                    │                  Route 53                    │
-                    │  buffden.com hosted zone (us-east-1)         │
-                    │  tinyurl.buffden.com  →  CloudFront (alias)  │
-                    │  go.buffden.com       →  ALB (alias)         │
+                    │         Cloudflare (DNS + Proxy)             │
+                    │  buffden.com nameservers                     │
+                    │  tinyurl.buffden.com  →  CloudFront (proxied)│
+                    │  go.buffden.com       →  ALB (proxied)       │
                     └──────────┬──────────────────────┬───────────┘
                                │                      │
                ┌───────────────▼──────┐   ┌───────────▼──────────────┐
@@ -56,10 +56,10 @@
 
 | Request | Route |
 |---|---|
-| `https://tinyurl.buffden.com` | Route 53 → CloudFront → S3 (Angular SPA) |
+| `https://tinyurl.buffden.com` | Cloudflare → CloudFront → S3 (Angular SPA) |
 | `https://tinyurl.buffden.com/*` | CloudFront → S3 → `index.html` (Angular router) |
-| `POST https://go.buffden.com/api/urls` | Route 53 → ALB → Nginx → Spring Boot → RDS |
-| `GET https://go.buffden.com/{code}` | Route 53 → ALB → Nginx → Spring Boot → 301/302 |
+| `POST https://go.buffden.com/api/urls` | Cloudflare → ALB → Nginx → Spring Boot → RDS |
+| `GET https://go.buffden.com/{code}` | Cloudflare → ALB → Nginx → Spring Boot → 301/302 |
 | `http://` any domain | Redirect to `https://` |
 
 ---
@@ -72,7 +72,7 @@
 | Backend | ALB → EC2 at `go.buffden.com` |
 | Short URL format | `https://go.buffden.com/{code}` |
 | API called by Angular | `https://go.buffden.com/api` |
-| DNS | Route 53 (delegated from Namecheap) |
+| DNS | Cloudflare (nameservers set at Namecheap) |
 | Region | `us-east-1` (N. Virginia) |
 | GitHub username | `buffden` |
 | Docker image | `ghcr.io/buffden/tinyurl-api` |
@@ -95,7 +95,7 @@
 | ALB | 1 load balancer | ~$18 |
 | S3 | <100 MB assets | <$1 |
 | CloudFront (SPA) | Low traffic | ~$1 |
-| Route 53 | 1 hosted zone | ~$1 |
+| Cloudflare | DNS + proxy (free plan) | $0 |
 | CloudWatch | Alarms + logs | ~$3 |
 | ACM / SSM | Free tiers | $0 |
 | **Total** | | **~$54/month** |

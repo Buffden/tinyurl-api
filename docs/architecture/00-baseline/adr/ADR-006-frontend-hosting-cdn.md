@@ -63,7 +63,7 @@ Cost is mostly usage-based and typically low at early traffic:
 
 - S3 storage: low monthly baseline for static bundles
 - CloudFront: request and egress based (main cost driver as traffic grows)
-- Route53 hosted zone and DNS queries
+- Cloudflare DNS (free plan — no hosted zone cost)
 - ACM certificate for CloudFront: no additional certificate fee
 
 For low to moderate traffic, this is usually cheaper than keeping separate always-on compute for frontend serving.
