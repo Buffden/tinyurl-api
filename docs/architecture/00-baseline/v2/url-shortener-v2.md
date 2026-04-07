@@ -306,7 +306,20 @@ Adding enterprise/global features now would increase complexity faster than it i
 
 ---
 
-## 11) Open Questions and Possible Future Enhancements
+## 11) Security Hardening Backlog
+
+The following security items are deferred from v1. v1 controls are sufficient for launch; these become mandatory when autoscaling and higher traffic are introduced. Full implementation details in [`security-hardening-v2.md`](./security-hardening-v2.md).
+
+| Item | Trigger for v2 |
+|---|---|
+| Cloudflare Turnstile CAPTCHA | Stops distributed bots bypassing per-IP rate limits |
+| Distributed rate limiting (Bucket4j + Redis) | Required when autoscaling introduces multiple app instances |
+| CloudWatch log retention policy (90 days) | Cost + compliance; requires IaC |
+| CloudWatch anomaly alerting (4xx/5xx spikes) | Automated incident detection; part of v2 observability milestone |
+
+---
+
+## 12) Open Questions and Possible Future Enhancements
 
 - Should custom aliases be enabled by default or gated by feature flag?
 - Should redirects be guess-resistant (to reduce enumeration) by moving from sequential IDs to randomized IDs?
