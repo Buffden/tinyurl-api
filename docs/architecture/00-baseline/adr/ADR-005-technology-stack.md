@@ -14,7 +14,7 @@ Single developer building a production-grade URL shortener. Stack must be practi
 
 ## Decision
 
-**Java 21 + Spring Boot 3 + Angular 18 + PostgreSQL 16**, containerised with Docker, deployed via GitHub Actions.
+**Java 21 + Spring Boot 3.5 + Angular 19 + PostgreSQL 16**, containerised with Docker, deployed via GitHub Actions.
 
 Redis, PgBouncer, and observability tooling are deferred to v2 where load data justifies them.
 
@@ -25,8 +25,8 @@ Redis, PgBouncer, and observability tooling are deferred to v2 where load data j
 | Layer | Choice | Version | When |
 | --- | --- | --- | --- |
 | Language | Java | 21 LTS | v1 |
-| Backend framework | Spring Boot | 3.3.x | v1 |
-| Frontend framework | Angular | 18.x | v1 |
+| Backend framework | Spring Boot | 3.5.x | v1 |
+| Frontend framework | Angular | 19.x | v1 |
 | Build tool | Gradle (Kotlin DSL) | 8.x | v1 |
 | Database | PostgreSQL | 16 | v1 |
 | JDBC connection pool | HikariCP | bundled | v1 |
@@ -34,7 +34,8 @@ Redis, PgBouncer, and observability tooling are deferred to v2 where load data j
 | ORM | Spring Data JPA + Hibernate | bundled | v1 |
 | API docs | SpringDoc OpenAPI 3 | 2.x | v1 |
 | Validation | Jakarta Bean Validation | bundled | v1 |
-| Rate limiting | Nginx (per-IP throttle) | — | v1 |
+| Rate limiting (infra) | Nginx (per-IP throttle) | — | v1 |
+| Rate limiting (app) | Bucket4j + Caffeine (in-process token bucket) | 8.9.0 | v1 |
 | Logging | SLF4J + Logback (JSON) | bundled | v1 |
 | Health checks | Spring Boot Actuator | bundled | v1 |
 | Unit tests | JUnit 5 + Mockito | bundled | v1 |
@@ -44,14 +45,15 @@ Redis, PgBouncer, and observability tooling are deferred to v2 where load data j
 | Reverse proxy / TLS | Nginx + Let's Encrypt | — | v1 |
 | Cache | Redis 7 + Lettuce | bundled | **v2** |
 | External connection pooler | PgBouncer | 1.22.x | **v2** |
-| Fine-grained rate limiting | Bucket4j + Redis | 8.x | **v2** |
+| Rate limiting (distributed) | Bucket4j + Redis (replaces in-process Caffeine) | 8.x | **v2** |
 | Metrics & dashboards | Micrometer + Prometheus + Grafana | — | **v2** |
 | Distributed tracing | OpenTelemetry | — | **v2** |
-| Frontend UI component lib | Angular Material | 18.x | **v2** |
+| Frontend UI component lib | Angular Material | 19.x | v1 |
 | E2E tests | Cypress | — | **v2** |
 
 > Items marked **bundled** require zero extra setup — Spring Boot pulls them in automatically.
 > Items marked **v2** must not be added until v2 scope begins.
+> Angular Material and Bucket4j (in-process) were added in v1 ahead of original ADR deferral — both justified by implementation reality without introducing new infrastructure dependencies.
 
 ---
 
@@ -62,7 +64,7 @@ Redis, PgBouncer, and observability tooling are deferred to v2 where load data j
 **Java 21 LTS**
 The minimum version that ships virtual threads as a stable feature (`Thread.ofVirtual()`). For a redirect-heavy service, each request blocks briefly on a DB lookup — virtual threads let you write plain blocking code that scales to thousands of concurrent requests without async/reactive complexity. Using an LTS release means security patches for years without forced upgrades.
 
-**Spring Boot 3.3**
+**Spring Boot 3.5**
 Chosen because it bundles almost everything else in this stack (HikariCP, Hibernate, SLF4J, Actuator, validation, JUnit). For a single developer, the cost of wiring things manually is not worth it. Spring Boot's autoconfiguration handles PostgreSQL, connection pooling, logging format, and health endpoints with a few lines of `application.yml`.
 Enable virtual threads with one property: `spring.threads.virtual.enabled=true`.
 
@@ -73,11 +75,11 @@ Faster incremental builds than Maven for iterative development. The Kotlin DSL g
 
 ### Frontend
 
-**Angular 18**
-Angular's opinionated structure — components, services, dependency injection, built-in routing, HttpClient with interceptors — means the frontend architecture decisions are already made. For a project that will grow its UI over time, this constraint is a feature: there is one correct way to add a route, a service, or an HTTP call. The standalone component API (stable in Angular 17+) removes the NgModule boilerplate that made earlier Angular versions feel heavyweight. TypeScript is enforced by default, which catches contract mismatches between frontend and backend at compile time.
+**Angular 19**
+Angular's opinionated structure — components, services, dependency injection, built-in routing, HttpClient with interceptors — means the frontend architecture decisions are already made. For a project that will grow its UI over time, this constraint is a feature: there is one correct way to add a route, a service, or an HTTP call. The standalone component API removes the NgModule boilerplate that made earlier Angular versions feel heavyweight. TypeScript is enforced by default, which catches contract mismatches between frontend and backend at compile time.
 
-**No Angular Material in v1**
-Angular Material is deferred to v2. The v1 UI is two screens: a form to shorten a URL and a page to display the result. Plain HTML + minimal CSS is sufficient. Adding a component library is extra dependency churn for no user-visible value in v1.
+**Angular Material 19**
+Angular Material is included in v1. The component library provides the form and result UI without custom CSS overhead.
 
 ---
 
@@ -111,10 +113,13 @@ Annotation-driven request validation (`@NotNull`, `@Size`, `@URL`). Applied to r
 ### Security & Rate Limiting
 
 **Nginx — per-IP rate limiting (v1)**
-Coarse throttle on `POST /api/urls` at the proxy layer before the request reaches the application. Zero application code required — configured in the Nginx config file. Sufficient for v1 abuse control.
+Coarse throttle per endpoint at the proxy layer before the request reaches the application. Three rate limit zones: `create_url` (40r/m), `redirect` (30r/m), `api_limit` (20r/s). Zero application code required — configured in `nginx.prod.conf`.
 
-**Bucket4j + Redis — deferred to v2**
-Fine-grained per-IP and per-endpoint rate limiting backed by Redis. Introduces the Redis dependency and distributed state — not justified until v2 scale and abuse data exists.
+**Bucket4j + Caffeine — in-process rate limiting (v1)**
+Application-layer per-IP token bucket (20 URL creations/hour) backed by a Caffeine in-process cache. Added as a defense-in-depth backstop: a misconfigured Nginx rule does not leave the application unprotected. Correct for a single EC2 instance — state is not shared across instances.
+
+**Bucket4j + Redis — distributed rate limiting (v2)**
+When autoscaling introduces multiple app instances, the in-process Caffeine backing store is replaced with Redis. Per-IP state becomes shared and atomic across all instances. The logic in `IpRateLimitFilter` does not change — only the backing store.
 
 ---
 
@@ -164,12 +169,15 @@ Pipeline-as-code in `.github/workflows/`. One workflow file in v1:
 
 ```text
 push to main
-  └── compile + unit tests
-        └── integration tests (Testcontainers)
+  └── unit tests + Testcontainers integration tests
+        └── Docker Compose smoke test (ephemeral credentials, health check, teardown)
               └── build Docker image
                     └── push to GHCR
-                          └── deploy via SSH (docker compose pull && up -d)
+                          └── cosign keyless image signing (Sigstore / OIDC)
+                                └── deploy via SSM RunCommand (no SSH, no port 22)
 ```
+
+Authentication to AWS uses OIDC — no long-lived access keys. The EC2 instance has an IAM role; deployment issues an SSM RunCommand to pull the new image and restart containers. All three stages must pass; smoke test failure blocks deploy.
 
 GHCR is free for public repositories and natively integrated with GitHub Actions — no separate registry credentials to manage.
 
