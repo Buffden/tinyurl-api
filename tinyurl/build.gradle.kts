@@ -35,6 +35,8 @@ dependencies {
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("io.micrometer:micrometer-registry-prometheus")
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+	implementation("com.bucket4j:bucket4j-core:8.9.0")
+	implementation("com.github.ben-manes.caffeine:caffeine")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("org.postgresql:postgresql")
