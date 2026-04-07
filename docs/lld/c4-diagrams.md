@@ -96,7 +96,7 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 | Tier | Colour | Containers |
 |------|--------|------------|
-| **Public Internet** | Grey | User, DNS Route53 (`tinyurl.buffden.com`) |
+| **Public Internet** | Grey | User, DNS Cloudflare (`tinyurl.buffden.com`) |
 | **CDN / Edge Layer** | Purple | CloudFront CDN |
 | **Frontend Origin** | Green | S3 Angular SPA static assets / UI |
 | **Entry Layer** | Green | Nginx (TLS termination + reverse proxy) |
@@ -111,7 +111,7 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 | From → To | Label |
 |-----------|-------|
-| User → DNS Route53 | `Resolve DNS` |
+| User → DNS Cloudflare | `Resolve DNS` |
 | User → CloudFront CDN | `HTTPS requests` |
 | CloudFront CDN → Nginx | `/api/*` |
 | Nginx → URL Shortener App | Write |
@@ -123,7 +123,7 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 | From → To | Label |
 |-----------|-------|
-| User → DNS Route53 | `Resolve DNS` |
+| User → DNS Cloudflare | `Resolve DNS` |
 | User → CloudFront CDN | `HTTPS requests` |
 | CloudFront CDN → Nginx | `/{short_code}` |
 | Nginx → URL Shortener App | Read |
@@ -138,7 +138,7 @@ Components that only exist in v2 are explicitly annotated with **(v2)** or **(v2
 
 | From → To | Label |
 |-----------|-------|
-| User → DNS Route53 | `Resolve DNS` |
+| User → DNS Cloudflare | `Resolve DNS` |
 | User → CloudFront CDN | `HTTPS requests` |
 | CloudFront CDN → S3 Angular SPA | `/*` |
 
