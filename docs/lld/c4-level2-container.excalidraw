@@ -4768,14 +4768,14 @@
       "updated": 1774395810450,
       "link": null,
       "locked": false,
-      "text": "DNS Route53\ngo.buffden.com → ALB\ntinyurl.buffden.com → CloudFront",
+      "text": "DNS Cloudflare\ngo.buffden.com → ALB\ntinyurl.buffden.com → CloudFront",
       "fontSize": 9.407443073499568,
       "fontFamily": 5,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 11,
       "containerId": null,
-      "originalText": "DNS Route53\ngo.buffden.com → ALB\ntinyurl.buffden.com → CloudFront",
+      "originalText": "DNS Cloudflare\ngo.buffden.com → ALB\ntinyurl.buffden.com → CloudFront",
       "autoResize": true,
       "lineHeight": 1.2727272727272727
     }
