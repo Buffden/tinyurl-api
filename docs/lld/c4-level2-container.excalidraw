@@ -456,8 +456,8 @@
         "type": 2
       },
       "seed": 458289626,
-      "version": 722,
-      "versionNonce": 2141215383,
+      "version": 723,
+      "versionNonce": 1026256348,
       "isDeleted": false,
       "boundElements": [
         {
@@ -475,13 +475,9 @@
         {
           "id": "o9vNTQyb-BaJ56gW5iiYO",
           "type": "arrow"
-        },
-        {
-          "id": "he9CFo5JVGSJqld7VEWdL",
-          "type": "arrow"
         }
       ],
-      "updated": 1774395820255,
+      "updated": 1775609382887,
       "link": null,
       "locked": false
     },
@@ -3859,117 +3855,6 @@
       "locked": false
     },
     {
-      "id": "he9CFo5JVGSJqld7VEWdL",
-      "type": "arrow",
-      "index": "b1p",
-      "frameId": null,
-      "x": 1894.5876308730863,
-      "y": 423.4115559172834,
-      "width": 0.5974622546825685,
-      "height": 132.560381291393,
-      "angle": 0,
-      "strokeColor": "#2f9e44",
-      "backgroundColor": "transparent",
-      "fillStyle": "hachure",
-      "strokeWidth": 2,
-      "strokeStyle": "solid",
-      "roughness": 0,
-      "opacity": 100,
-      "groupIds": [],
-      "roundness": null,
-      "seed": 516027226,
-      "version": 7030,
-      "versionNonce": 1590483863,
-      "isDeleted": false,
-      "boundElements": [
-        {
-          "id": "ojREpVH5TAjbIB_qr3tMT",
-          "type": "text"
-        }
-      ],
-      "updated": 1774395828577,
-      "link": null,
-      "locked": false,
-      "points": [
-        [
-          0,
-          0
-        ],
-        [
-          0.5974622546825685,
-          -132.560381291393
-        ]
-      ],
-      "lastCommittedPoint": null,
-      "startBinding": {
-        "elementId": "oeICI_pW2ybP5oKCNA7E8",
-        "fixedPoint": [
-          0.49888888888888894,
-          -0.08333333333333333
-        ],
-        "focus": 0,
-        "gap": 0
-      },
-      "endBinding": {
-        "elementId": "78ojM5qUwUrICBKqH7Noy",
-        "fixedPoint": [
-          0.1857337925188286,
-          1.047407964864732
-        ],
-        "focus": 0,
-        "gap": 0
-      },
-      "startArrowhead": null,
-      "endArrowhead": "arrow",
-      "label": {
-        "containerId": "arr-user-dns",
-        "text": "Resolve\ndomain",
-        "fontSize": 11,
-        "fontFamily": 5
-      },
-      "elbowed": true,
-      "fixedSegments": null,
-      "startIsSpecial": null,
-      "endIsSpecial": null
-    },
-    {
-      "id": "ojREpVH5TAjbIB_qr3tMT",
-      "type": "text",
-      "x": 1828.9956814101956,
-      "y": 347.4922923433583,
-      "width": 131.18389892578125,
-      "height": 20,
-      "angle": 0,
-      "strokeColor": "#2f9e44",
-      "backgroundColor": "transparent",
-      "fillStyle": "solid",
-      "strokeWidth": 2,
-      "strokeStyle": "solid",
-      "roughness": 1,
-      "opacity": 100,
-      "groupIds": [],
-      "frameId": null,
-      "index": "b1q",
-      "roundness": null,
-      "seed": 1268676634,
-      "version": 157,
-      "versionNonce": 232837153,
-      "isDeleted": false,
-      "boundElements": [],
-      "updated": 1773443740760,
-      "link": null,
-      "locked": false,
-      "text": "HTTPS requests",
-      "fontSize": 16,
-      "fontFamily": 5,
-      "textAlign": "center",
-      "verticalAlign": "middle",
-      "containerId": "he9CFo5JVGSJqld7VEWdL",
-      "originalText": "HTTPS requests",
-      "autoResize": true,
-      "lineHeight": 1.25
-    },
-    {
       "id": "71eW-l9yd3DH-cvS96QC_",
       "type": "arrow",
       "index": "b1r",
@@ -4457,14 +4342,10 @@
         "type": 3
       },
       "seed": 1779854042,
-      "version": 1927,
-      "versionNonce": 1472569719,
+      "version": 1928,
+      "versionNonce": 431575644,
       "isDeleted": false,
       "boundElements": [
-        {
-          "id": "he9CFo5JVGSJqld7VEWdL",
-          "type": "arrow"
-        },
         {
           "id": "uapavP1hYntxfD5Go8WU9",
           "type": "arrow"
@@ -4482,7 +4363,7 @@
           "type": "text"
         }
       ],
-      "updated": 1774395820255,
+      "updated": 1775609382887,
       "link": null,
       "locked": false
     },
