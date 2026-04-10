@@ -31,7 +31,7 @@ public class RedirectController {
     @GetMapping("/{shortCode}")
     public ResponseEntity<Void> redirect(
         @PathVariable
-        @Size(min = 6, max = 8, message = "INVALID_URL")
+        @Size(min = 1, max = 8, message = "INVALID_URL")
         @Pattern(regexp = "^[0-9A-Za-z]+$", message = "INVALID_URL")
         String shortCode
     ) {
