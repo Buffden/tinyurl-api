@@ -5,6 +5,7 @@ import com.tinyurl.dto.CreateUrlRequest;
 import com.tinyurl.dto.CreateUrlResponse;
 import com.tinyurl.dto.UrlMapping;
 import com.tinyurl.service.UrlService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,8 +27,17 @@ public class UrlController {
     }
 
     @PostMapping
-    public ResponseEntity<CreateUrlResponse> create(@Valid @RequestBody CreateUrlRequest request) {
-        UrlMapping created = urlService.shortenUrl(request);
+    public ResponseEntity<CreateUrlResponse> create(
+        @Valid @RequestBody CreateUrlRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        String ip = httpRequest.getHeader("X-Forwarded-For") != null
+            ? httpRequest.getHeader("X-Forwarded-For").split(",")[0].trim()
+            : httpRequest.getRemoteAddr();
+        String userAgent = httpRequest.getHeader("User-Agent");
+        String referer = httpRequest.getHeader("Referer");
+
+        UrlMapping created = urlService.shortenUrl(request, ip, userAgent, referer);
         String baseUrl = appProperties.baseUrl().endsWith("/")
             ? appProperties.baseUrl().substring(0, appProperties.baseUrl().length() - 1)
             : appProperties.baseUrl();
