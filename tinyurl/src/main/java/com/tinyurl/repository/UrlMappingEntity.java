@@ -28,6 +28,18 @@ public class UrlMappingEntity {
     @Column(name = "has_explicit_expiry", nullable = false)
     private boolean hasExplicitExpiry;
 
+    @Column(name = "creator_ip", length = 45)
+    private String creatorIp;
+
+    @Column(name = "creator_user_agent", length = 512)
+    private String creatorUserAgent;
+
+    @Column(name = "referer", length = 2048)
+    private String referer;
+
+    @Column(name = "click_count", nullable = false)
+    private long clickCount;
+
     protected UrlMappingEntity() {
     }
 
@@ -37,7 +49,10 @@ public class UrlMappingEntity {
         String originalUrl,
         OffsetDateTime createdAt,
         OffsetDateTime expiresAt,
-        boolean hasExplicitExpiry
+        boolean hasExplicitExpiry,
+        String creatorIp,
+        String creatorUserAgent,
+        String referer
     ) {
         this.id = id;
         this.shortCode = shortCode;
@@ -45,6 +60,10 @@ public class UrlMappingEntity {
         this.createdAt = createdAt;
         this.expiresAt = expiresAt;
         this.hasExplicitExpiry = hasExplicitExpiry;
+        this.creatorIp = creatorIp;
+        this.creatorUserAgent = creatorUserAgent;
+        this.referer = referer;
+        this.clickCount = 0;
     }
 
     public Long getId() {
@@ -69,6 +88,26 @@ public class UrlMappingEntity {
 
     public boolean hasExplicitExpiry() {
         return hasExplicitExpiry;
+    }
+
+    public String getCreatorIp() {
+        return creatorIp;
+    }
+
+    public String getCreatorUserAgent() {
+        return creatorUserAgent;
+    }
+
+    public String getReferer() {
+        return referer;
+    }
+
+    public long getClickCount() {
+        return clickCount;
+    }
+
+    public void incrementClickCount() {
+        this.clickCount++;
     }
 
 }

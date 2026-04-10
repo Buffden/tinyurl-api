@@ -5,6 +5,6 @@ import com.tinyurl.dto.UrlMapping;
 import java.util.Optional;
 
 public interface UrlService {
-    UrlMapping shortenUrl(CreateUrlRequest request);
+    UrlMapping shortenUrl(CreateUrlRequest request, String creatorIp, String creatorUserAgent, String referer);
     Optional<UrlMapping> resolveCode(String code);
 }

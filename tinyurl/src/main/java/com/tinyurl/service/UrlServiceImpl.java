@@ -30,7 +30,7 @@ public class UrlServiceImpl implements UrlService {
     }
 
     @Override
-    public UrlMapping shortenUrl(CreateUrlRequest request) {
+    public UrlMapping shortenUrl(CreateUrlRequest request, String creatorIp, String creatorUserAgent, String referer) {
         validateUrl(request.url());
         boolean hasExplicitExpiry = request.expiresInDays() != null;
         int expiresInDays = normalizeExpiry(request.expiresInDays());
@@ -46,7 +46,10 @@ public class UrlServiceImpl implements UrlService {
             request.url(),
             now,
             expiresAt,
-            hasExplicitExpiry
+            hasExplicitExpiry,
+            creatorIp,
+            creatorUserAgent,
+            referer
         );
 
         UrlMappingEntity persisted = urlRepository.save(entity);
@@ -65,6 +68,9 @@ public class UrlServiceImpl implements UrlService {
         if (entity.getExpiresAt().isBefore(now)) {
             throw new GoneException("This short URL has expired or been removed.");
         }
+
+        entity.incrementClickCount();
+        urlRepository.save(entity);
 
         return Optional.of(toDomain(entity));
     }
