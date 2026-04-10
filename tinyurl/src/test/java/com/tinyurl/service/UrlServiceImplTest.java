@@ -45,7 +45,7 @@ class UrlServiceImplTest {
     void shortenUrlShouldRejectMalformedUrl() {
         IllegalArgumentException ex = assertThrows(
             IllegalArgumentException.class,
-            () -> service.shortenUrl(new CreateUrlRequest("not-a-url", 30))
+            () -> service.shortenUrl(new CreateUrlRequest("not-a-url", 30), null, null, null)
         );
         assertEquals("INVALID_URL", ex.getMessage());
     }
@@ -54,7 +54,7 @@ class UrlServiceImplTest {
     void shortenUrlShouldRejectNonHttpUrl() {
         IllegalArgumentException ex = assertThrows(
             IllegalArgumentException.class,
-            () -> service.shortenUrl(new CreateUrlRequest("ftp://example.com", 30))
+            () -> service.shortenUrl(new CreateUrlRequest("ftp://example.com", 30), null, null, null)
         );
         assertEquals("INVALID_URL", ex.getMessage());
     }
@@ -63,7 +63,7 @@ class UrlServiceImplTest {
     void shortenUrlShouldRejectZeroExpiry() {
         IllegalArgumentException ex = assertThrows(
             IllegalArgumentException.class,
-            () -> service.shortenUrl(new CreateUrlRequest("https://example.com", 0))
+            () -> service.shortenUrl(new CreateUrlRequest("https://example.com", 0), null, null, null)
         );
         assertEquals("INVALID_EXPIRY", ex.getMessage());
     }
@@ -72,7 +72,7 @@ class UrlServiceImplTest {
     void shortenUrlShouldRejectTooLargeExpiry() {
         IllegalArgumentException ex = assertThrows(
             IllegalArgumentException.class,
-            () -> service.shortenUrl(new CreateUrlRequest("https://example.com", 3651))
+            () -> service.shortenUrl(new CreateUrlRequest("https://example.com", 3651), null, null, null)
         );
         assertEquals("INVALID_EXPIRY", ex.getMessage());
     }
@@ -84,7 +84,7 @@ class UrlServiceImplTest {
         when(urlRepository.save(any(UrlMappingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OffsetDateTime before = OffsetDateTime.now(ZoneOffset.UTC);
-        UrlMapping result = service.shortenUrl(new CreateUrlRequest("https://example.com/default", null));
+        UrlMapping result = service.shortenUrl(new CreateUrlRequest("https://example.com/default", null), "1.2.3.4", "TestAgent", null);
         OffsetDateTime after = OffsetDateTime.now(ZoneOffset.UTC);
 
         assertEquals("0000Ab", result.shortCode());
@@ -105,7 +105,7 @@ class UrlServiceImplTest {
         when(urlRepository.save(any(UrlMappingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OffsetDateTime before = OffsetDateTime.now(ZoneOffset.UTC);
-        UrlMapping result = service.shortenUrl(new CreateUrlRequest("https://example.com/explicit", 30));
+        UrlMapping result = service.shortenUrl(new CreateUrlRequest("https://example.com/explicit", 30), "1.2.3.4", "TestAgent", "https://tinyurl.buffden.com/");
         OffsetDateTime after = OffsetDateTime.now(ZoneOffset.UTC);
 
         assertEquals("0000Ac", result.shortCode());
@@ -132,7 +132,8 @@ class UrlServiceImplTest {
             "https://example.com/expired",
             OffsetDateTime.now(ZoneOffset.UTC).minusDays(40),
             OffsetDateTime.now(ZoneOffset.UTC).minus(1, ChronoUnit.MINUTES),
-            true
+            true,
+            null, null, null
         );
         when(urlRepository.findByShortCode("0000Ad")).thenReturn(Optional.of(expired));
 
