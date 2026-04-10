@@ -10,9 +10,9 @@ class Base62EncoderImplTest {
     private final Base62EncoderImpl encoder = new Base62EncoderImpl();
 
     @Test
-    void encodeShouldPadToAtLeastSixCharacters() {
-        assertEquals(6, encoder.encode(1).length());
-        assertEquals("000000", encoder.encode(0));
+    void encodeShouldNotPadWithLeadingZeros() {
+        assertEquals("1", encoder.encode(1));
+        assertEquals("0", encoder.encode(0));
     }
 
     @Test
