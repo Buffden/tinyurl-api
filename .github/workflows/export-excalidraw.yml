@@ -75,5 +75,6 @@ jobs:
             echo "No diagram changes to commit."
           else
             git commit -m "chore: auto-export excalidraw diagrams [skip ci]"
+            git pull --rebase origin main
             git push
           fi
