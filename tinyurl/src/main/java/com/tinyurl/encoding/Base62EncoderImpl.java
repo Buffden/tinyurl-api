@@ -7,8 +7,6 @@ public class Base62EncoderImpl implements Base62Encoder {
 
     private static final String CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final int BASE = CHARSET.length();
-    private static final int MIN_LENGTH = 6;
-
     @Override
     public String encode(long id) {
         if (id < 0) {
@@ -16,7 +14,7 @@ public class Base62EncoderImpl implements Base62Encoder {
         }
 
         if (id == 0) {
-            return "0".repeat(MIN_LENGTH);
+            return "0";
         }
 
         StringBuilder encoded = new StringBuilder();
@@ -26,10 +24,6 @@ public class Base62EncoderImpl implements Base62Encoder {
             int index = (int) (value % BASE);
             encoded.append(CHARSET.charAt(index));
             value /= BASE;
-        }
-
-        while (encoded.length() < MIN_LENGTH) {
-            encoded.append('0');
         }
 
         return encoded.reverse().toString();
