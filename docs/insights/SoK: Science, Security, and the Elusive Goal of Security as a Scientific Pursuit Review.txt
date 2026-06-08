@@ -1,0 +1,30 @@
+Title: SoK: Science, Security, and the Elusive Goal of Security as a Scientific Pursuit
+
+Professor Name: Habeeb Olufowobi
+Student Name: Harshwardhan Patil
+Student ID: 1002224144
+Date: 04.22.2026
+
+Summary
+
+The paper “Science of Security” presents a systematic effort to define cybersecurity as a rigorous scientific discipline rather than just a collection of ad hoc practices. The authors argue that while fields like physics and mathematics have well-established theoretical foundations, cybersecurity lacks universally accepted principles, formal models, and repeatable experimental methodologies. As a result, security solutions are often reactive, inconsistent, and difficult to validate. The paper emphasizes that security cannot be treated as a binary property (secure vs. insecure), but rather as a probabilistic and evolving state where systems are continuously exposed to new threats.
+
+A central theme of the paper is the gap between formal security models and real-world systems. The authors highlight that many cryptographic and system-level security models fail to account for practical attack vectors such as side-channel attacks, implementation flaws, and human behavior. For example, even strong cryptographic systems can fail due to leakage or assumptions that do not hold in practice . The paper also discusses the difficulty of defining “correct” security properties, as different stakeholders may have conflicting interpretations of what security means. This leads to inconsistencies in evaluation and implementation.
+
+Another important contribution of the paper is its focus on measurement and experimentation in security research. Unlike traditional sciences, where experiments can be replicated under controlled conditions, cybersecurity experiments are often difficult to reproduce due to evolving environments, hidden variables, and adversarial behavior. The paper argues for the development of standardized metrics and methodologies to improve the reliability and comparability of security research. It also stresses the importance of hypothesis-driven approaches, suggesting that security decisions should be treated as scientific hypotheses that can be tested and falsified.
+
+Overall, the paper aims to push the field toward a more disciplined and structured approach, where security research is grounded in theory, validated through experiments, and continuously refined based on empirical evidence.
+
+Discussion
+
+One of the most compelling aspects of this paper is its honest critique of the current state of cybersecurity. The authors do not attempt to present security as a mature or fully understood field; instead, they acknowledge its limitations and highlight the challenges in establishing it as a true science. This level of transparency is valuable because it sets realistic expectations for both researchers and practitioners. The idea that “we can never be sure that we are secure, only that we are insecure”  is particularly powerful, as it reframes security from a goal to a continuous process.
+
+A major strength of the paper is its discussion of the disconnect between theoretical models and practical implementations. I found the examples from cryptography especially insightful, where formal proofs often fail to capture real-world attack vectors like side-channel attacks. This highlights a critical issue: even mathematically sound systems can be insecure when deployed. This was somewhat surprising because cryptography is often considered the “most rigorous” area of cybersecurity, yet even it suffers from fundamental limitations. The paper effectively demonstrates that relying solely on formal models can create a false sense of security.
+
+However, one aspect I did not fully appreciate is the lack of concrete solutions. While the paper clearly identifies the problems in the field, it remains somewhat abstract when proposing solutions. For instance, it advocates for better metrics and experimental rigor but does not provide detailed frameworks or methodologies for achieving these goals. Including case studies or examples of successful scientific approaches in cybersecurity would have strengthened the paper significantly.
+
+Another area that could have been improved is clarity in certain sections. The discussion around security definitions and models can become dense and difficult to follow, especially for readers who are not already familiar with the field. For example, the debate over “correct” definitions of security is important but could have benefited from simpler examples or visual representations. At times, the paper assumes a high level of prior knowledge, which may limit its accessibility to beginners.
+
+One point that I found particularly thought-provoking is the emphasis on assumptions in security systems. The paper suggests that many vulnerabilities arise not from flaws in design but from incorrect or incomplete assumptions about the environment or adversary. This aligns closely with real-world incidents, where systems fail because they were not designed with the correct threat model in mind. It reinforces the idea that understanding the attacker is just as important as building defenses.
+
+Overall, this paper provides a critical and reflective perspective on the field of cybersecurity. It challenges the reader to think beyond tools and techniques and consider the foundational principles that govern security. While it does not provide definitive answers, it successfully highlights the need for a more structured, scientific approach to security research. The key takeaway is that cybersecurity is still an evolving discipline, and developing it into a true science requires better models, better measurements, and a deeper understanding of real-world systems.

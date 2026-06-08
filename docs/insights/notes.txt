@@ -1,0 +1,16 @@
+IoT
+limitations
+hardware constraints
+open problems and challenges - 6
+5Vs
+owasp
+oem
+data security 3 ways
+protocols securities
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+formal model deiven analysis
+
+limitations
+threat Models
