@@ -2403,8 +2403,8 @@
       "frameId": null,
       "x": -198.19754093659753,
       "y": -58.16019490533003,
-      "width": 53.18648124659856,
-      "height": 188.37120351866412,
+      "width": 28.24434257472356,
+      "height": 188.16026601866412,
       "angle": 0,
       "strokeColor": "#f08c00",
       "backgroundColor": "transparent",
@@ -2416,8 +2416,8 @@
       "groupIds": [],
       "roundness": null,
       "seed": 777376600,
-      "version": 5636,
-      "versionNonce": 336055732,
+      "version": 5651,
+      "versionNonce": 330421556,
       "isDeleted": false,
       "boundElements": [
         {
@@ -2425,7 +2425,7 @@
           "type": "text"
         }
       ],
-      "updated": 1780887497359,
+      "updated": 1780888335799,
       "link": null,
       "locked": false,
       "points": [
@@ -2438,12 +2438,12 @@
           94.08843335104227
         ],
         [
-          53.18648124659856,
+          28.24434257472356,
           94.08843335104227
         ],
         [
-          53.18648124659856,
-          188.37120351866412
+          28.24434257472356,
+          188.16026601866412
         ]
       ],
       "lastCommittedPoint": null,
@@ -2459,8 +2459,8 @@
       "endBinding": {
         "elementId": "nR-2GIajiYPMjhAoZLsck",
         "fixedPoint": [
-          0.49952875878787484,
-          -0.04326026653429992
+          0.38199112218058967,
+          -0.0450853090287157
         ],
         "focus": 0,
         "gap": 0
