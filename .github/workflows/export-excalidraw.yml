@@ -1,17 +1,21 @@
-name: Export Excalidraw Diagrams
+name: Export Diagrams
 # Testing the triggering of this workflow:
 
 on:
-  # Runs on any PR (any target branch) that touches .excalidraw files → validate only
+  # Runs on any PR (any target branch) that touches diagram source files → validate only
   pull_request:
     paths:
       - '**/*.excalidraw'
+      - '**/*.puml'
+      - '**/*.plantuml'
 
-  # Runs when .excalidraw files land on main (PR merged) → export + commit
+  # Runs when diagram source files land on main (PR merged) → export + commit
   push:
     branches: [main]
     paths:
       - '**/*.excalidraw'
+      - '**/*.puml'
+      - '**/*.plantuml'
 
   workflow_dispatch:
 
@@ -31,17 +35,25 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install diagram-sync
-        run: npm install -g diagram-sync @swiftlysingh/excalidraw-cli
+      - name: Install PlantUML
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends default-jre-headless plantuml
 
-      # On PR  → validates every .excalidraw can be exported (job fails = PR blocked)
+      - name: Install Excalidraw CLI
+        run: npm install -g @swiftlysingh/excalidraw-cli
+
+      - name: Install diagram-sync
+        run: npm install -g diagram-sync
+
+      # On PR  → validates every diagram can be exported (job fails = PR blocked)
       # On push → same step, but followed by the commit step below
-      - name: Export .excalidraw files → diagrams/
+      - name: Export diagram files → diagrams/
         run: diagram-sync
 
       # Commits back on push to main (PR merged) or manual workflow_dispatch
       # Skipped entirely during PR validation runs
-      - name: Commit exported SVGs to main
+      - name: Commit exported diagrams to main
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
@@ -50,7 +62,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No diagram changes to commit."
           else
-            git commit -m "chore: auto-export excalidraw diagrams [skip ci]"
+            git commit -m "chore: auto-export diagrams [skip ci]"
             git pull --rebase origin main
             git push
           fi
