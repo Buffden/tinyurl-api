@@ -5,13 +5,12 @@
 
 services:
   nginx:
-    image: nginx:1.27-alpine
+    image: ghcr.io/buffden/tinyurl-nginx:${IMAGE_TAG}
     container_name: tinyurl-nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       app:
