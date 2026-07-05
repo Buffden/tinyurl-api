@@ -451,7 +451,7 @@ Cloudflare's auto-import is incomplete. Manually verify and correct all records:
 | --- | --- | --- | --- |
 | CNAME | `go` | `dualstack.tinyurl-alb-xxx.us-east-1.elb.amazonaws.com` | Orange (Proxied) |
 | CNAME | `tinyurl` | `d1anlbbmfo4elu.cloudfront.net` | Orange (Proxied) |
-| A | `ems` | `100.25.10.178` | Orange (Proxied) |
+| A | `ems` | `<ems-public-ip>` | Orange (Proxied) |
 | CNAME | `portfolio` | `buffden.github.io` | Grey (DNS only) |
 | CNAME | `_2a3ec5a40d53220a744f6e248e46f22b` | `_bf955b229028da621bc467ed086b9ddc.jkddzztszm.acm-validations.aws` | Grey (DNS only) |
 
