@@ -129,7 +129,7 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Build and push Docker image
+      - name: Build and push Docker images
         id: build-push
         env:
           IMAGE_TAG: ${{ github.sha }}
@@ -138,6 +138,9 @@ jobs:
           docker push ghcr.io/buffden/tinyurl-api:$IMAGE_TAG
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/buffden/tinyurl-api:$IMAGE_TAG)
           echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+
+          docker build -t ghcr.io/buffden/tinyurl-nginx:$IMAGE_TAG infra/nginx/
+          docker push ghcr.io/buffden/tinyurl-nginx:$IMAGE_TAG
 
       - name: Sign Docker image with cosign (keyless)
         env:
