@@ -57,8 +57,8 @@ Only one secret is stored in GitHub — everything else lives in AWS Parameter S
 | `AWS_ROLE_ARN` | `arn:aws:iam::<account-id>:role/role-github-actions-tinyurl` |
 
 > **Important:** `AWS_ROLE_ARN` must be the **IAM role ARN** — not the OIDC provider ARN.
-> - ✅ Correct: `arn:aws:iam::<account-id>:role/role-github-actions-tinyurl`
-> - ❌ Wrong:   `arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com`
+> - ✅ Correct: `arn:aws:iam::<your-aws-account-id>:role/role-github-actions-tinyurl`
+> - ❌ Wrong:   `arn:aws:iam::<your-aws-account-id>:oidc-provider/token.actions.githubusercontent.com`
 
 ### AWS Parameter Store entries (fetched at runtime by the workflows)
 
@@ -367,8 +367,8 @@ Frontend repo — merged to main
 
 The OIDC provider ARN and the role ARN look similar — easy to copy the wrong one.
 
-- ❌ OIDC provider: `arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com`
-- ✅ IAM role: `arn:aws:iam::<account-id>:role/role-github-actions-tinyurl`
+- ❌ OIDC provider: `arn:aws:iam::<your-aws-account-id>:oidc-provider/token.actions.githubusercontent.com`
+- ✅ IAM role: `arn:aws:iam::<your-aws-account-id>:role/role-github-actions-tinyurl`
 
 ---
 
