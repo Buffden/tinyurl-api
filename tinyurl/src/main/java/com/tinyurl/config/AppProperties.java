@@ -10,7 +10,9 @@ public record AppProperties(
     String frontendUrl,
     Integer defaultExpiryDays,
     Integer shortCodeMinLength,
-    Cors cors
+    Cors cors,
+    UrlValidation urlValidation
 ) {
     public record Cors(List<String> allowedOrigins) {}
+    public record UrlValidation(boolean enabled) {}
 }

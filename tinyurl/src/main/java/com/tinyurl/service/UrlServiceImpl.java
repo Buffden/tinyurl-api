@@ -22,16 +22,22 @@ public class UrlServiceImpl implements UrlService {
     private final UrlRepository urlRepository;
     private final Base62Encoder base62Encoder;
     private final AppProperties appProperties;
+    private final UrlReachabilityChecker reachabilityChecker;
 
-    public UrlServiceImpl(UrlRepository urlRepository, Base62Encoder base62Encoder, AppProperties appProperties) {
+    public UrlServiceImpl(UrlRepository urlRepository, Base62Encoder base62Encoder,
+            AppProperties appProperties, UrlReachabilityChecker reachabilityChecker) {
         this.urlRepository = urlRepository;
         this.base62Encoder = base62Encoder;
         this.appProperties = appProperties;
+        this.reachabilityChecker = reachabilityChecker;
     }
 
     @Override
     public UrlMapping shortenUrl(CreateUrlRequest request, String creatorIp, String creatorUserAgent, String referer) {
         validateUrl(request.url());
+        if (appProperties.urlValidation() != null && appProperties.urlValidation().enabled()) {
+            reachabilityChecker.check(request.url());
+        }
         boolean hasExplicitExpiry = request.expiresInDays() != null;
         int expiresInDays = normalizeExpiry(request.expiresInDays());
 

@@ -48,3 +48,5 @@ tinyurl:
   cors:
     allowed-origins:
       - "http://localhost:4200"
+  url-validation:
+    enabled: true

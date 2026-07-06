@@ -34,11 +34,16 @@ class UrlServiceImplTest {
     @Mock
     private Base62Encoder base62Encoder;
 
+    @Mock
+    private UrlReachabilityChecker reachabilityChecker;
+
     private UrlServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new UrlServiceImpl(urlRepository, base62Encoder, new AppProperties("http://localhost", "http://localhost:4200", 180, 6, null));
+        service = new UrlServiceImpl(urlRepository, base62Encoder,
+                new AppProperties("http://localhost", "http://localhost:4200", 180, 6, null, null),
+                reachabilityChecker);
     }
 
     @Test

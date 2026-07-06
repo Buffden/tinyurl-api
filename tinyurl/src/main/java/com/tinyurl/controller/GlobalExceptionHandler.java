@@ -3,6 +3,7 @@ package com.tinyurl.controller;
 import com.tinyurl.dto.ErrorResponse;
 import com.tinyurl.exception.GoneException;
 import com.tinyurl.exception.NotFoundException;
+import com.tinyurl.exception.UrlUnreachableException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.ConstraintViolationException;
@@ -70,6 +71,13 @@ public class GlobalExceptionHandler {
             .body(new ErrorResponse("NOT_FOUND", ex.getMessage()));
     }
 
+    @ExceptionHandler(UrlUnreachableException.class)
+    public ResponseEntity<ErrorResponse> handleUrlUnreachable(UrlUnreachableException ex) {
+        incrementErrorMetric(HttpStatus.UNPROCESSABLE_ENTITY, "URL_UNREACHABLE");
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .body(new ErrorResponse("URL_UNREACHABLE", messageForCode("URL_UNREACHABLE")));
+    }
+
     @ExceptionHandler(GoneException.class)
     public ResponseEntity<ErrorResponse> handleGone(GoneException ex) {
         incrementErrorMetric(HttpStatus.GONE, "GONE");
@@ -99,7 +107,7 @@ public class GlobalExceptionHandler {
         }
         // Map to bounded set of known error codes
         return switch (errorCode) {
-            case "INVALID_URL", "INVALID_EXPIRY", "INVALID_REQUEST" -> errorCode;
+            case "INVALID_URL", "INVALID_EXPIRY", "INVALID_REQUEST", "URL_UNREACHABLE" -> errorCode;
             case "SERVICE_UNAVAILABLE", "NOT_FOUND", "GONE", "INTERNAL_ERROR" -> errorCode;
             default -> "UNKNOWN_ERROR";
         };
@@ -109,6 +117,7 @@ public class GlobalExceptionHandler {
         return switch (code) {
             case "INVALID_URL" -> "URL must be a valid HTTP or HTTPS address (max 2048 characters).";
             case "INVALID_EXPIRY" -> "Expiry must be a positive integer not greater than 3650 days.";
+            case "URL_UNREACHABLE" -> "The provided URL could not be reached. Please check the URL and try again.";
             default -> "Request validation failed.";
         };
     }
