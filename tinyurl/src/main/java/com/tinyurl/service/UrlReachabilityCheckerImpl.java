@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -36,6 +37,8 @@ public class UrlReachabilityCheckerImpl implements UrlReachabilityChecker {
             }
         } catch (UrlUnreachableException e) {
             throw e;
+        } catch (UnknownHostException e) {
+            throw new UrlUnreachableException("URL_UNREACHABLE");
         } catch (Exception e) {
             log.warn("Reachability check failed for host {} — failing open: {}", URI.create(url).getHost(), e.getMessage());
         }
