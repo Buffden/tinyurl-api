@@ -110,6 +110,9 @@ public class UrlServiceImpl implements UrlService {
             if (!uri.isAbsolute() || uri.getHost() == null || uri.getHost().isBlank()) {
                 throw new IllegalArgumentException("INVALID_URL");
             }
+            if (uri.getUserInfo() != null) {
+                throw new IllegalArgumentException("INVALID_URL");
+            }
         } catch (URISyntaxException | IllegalArgumentException ex) {
             throw new IllegalArgumentException("INVALID_URL");
         }
