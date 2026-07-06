@@ -19,7 +19,7 @@ The system is read-heavy (99:1 read/write ratio in v1, 95:5 in v2). The redirect
 
 ## Decision
 
-**v1**: Scale application servers **horizontally** behind a load balancer. Keep the database as a **single PostgreSQL primary** (vertical scaling + indexing). No cache required.
+**v1**: Scale application servers **horizontally** behind Nginx. Keep the database as a **single PostgreSQL primary** (vertical scaling + indexing). No cache required.
 
 **v2**: Add **Redis cache-aside** on the redirect path (> 90% cache hit target) to absorb the 20K QPS peak without overloading the DB. Enable app autoscaling on CPU + P95 latency. Add a DB read replica only if cache miss pressure on the primary becomes measurable.
 
@@ -28,7 +28,7 @@ The system is read-heavy (99:1 read/write ratio in v1, 95:5 in v2). The redirect
 ## Consequences
 
 - Application instances must be **fully stateless** — no in-process session or shared memory.
-- Load balancer and health checks are required infrastructure from v1.
+- Nginx and health checks are required infrastructure from v1.
 - The trigger for adding read replicas is a **measured metric**, not an upfront decision.
 - v2 introduces Redis as a new operational failure domain; the redirect path must degrade gracefully when Redis is unavailable (fall back to DB, apply stricter rate limiting).
 

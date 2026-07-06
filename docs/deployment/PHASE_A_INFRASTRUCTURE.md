@@ -5,7 +5,7 @@
 **Region:** `us-east-1` (N. Virginia) for everything
 **Estimated time:** 2–3 hours in the console
 
-**Deliverable:** `curl https://go.buffden.com` returns HTTP 502 — ALB is up, EC2 is registered, but no app running yet. That 502 confirms the full network path is working.
+**Deliverable:** `curl https://go.buffden.com` returns a connection response — EC2 is up and reachable, but no app running yet. That confirms the full network path is working.
 
 ---
 
@@ -18,11 +18,10 @@
 - [ ] Step 5 — IAM roles
 - [ ] Step 6 — RDS PostgreSQL
 - [ ] Step 7 — EC2 instance
-- [ ] Step 8 — ALB + target group
-- [ ] Step 9 — S3 bucket
-- [ ] Step 10 — CloudFront distribution
-- [ ] Step 11 — Route 53 DNS records
-- [ ] Step 12 — Cloudflare DNS migration (free DDoS + edge protection)
+- [ ] Step 8 — S3 bucket
+- [ ] Step 9 — CloudFront distribution
+- [ ] Step 10 — Route 53 DNS records
+- [ ] Step 11 — Cloudflare DNS migration (free DDoS + edge protection)
 
 ---
 
@@ -77,7 +76,7 @@ A single wildcard cert covers both `tinyurl.buffden.com` and `go.buffden.com`.
 
 ### 3b. Create subnets
 
-**Public subnets (ALB + EC2):**
+**Public subnets (EC2):**
 
 | Name | AZ | CIDR |
 |---|---|---|
@@ -96,7 +95,7 @@ For each subnet:
 2. Select `tinyurl-prod-vpc`
 3. Fill in name, AZ, CIDR as above
 
-> ALB requires subnets in at least 2 AZs — that's why we create two public subnets even with one EC2.
+> Two public subnets across AZs are created for future flexibility, though only one EC2 is used.
 
 ### 3c. Internet Gateway
 
@@ -119,27 +118,19 @@ For each subnet:
 
 ## Step 4 — Security Groups
 
-Create three security groups inside `tinyurl-prod-vpc`.
+Create two security groups inside `tinyurl-prod-vpc`.
 
-### tinyurl-alb (Internet-facing load balancer)
+### tinyurl-ec2 (Application server)
 
 > AWS does not allow security group names starting with `sg-` — use names without that prefix.
 
 1. **VPC → Security Groups → Create security group**
-2. Name: `tinyurl-alb`, VPC: `tinyurl-prod-vpc`
-3. Description: `Internet-facing load balancer`
+2. Name: `tinyurl-ec2`, VPC: `tinyurl-prod-vpc`
+3. Description: `Application server, accepts HTTP and HTTPS from internet`
 4. Inbound rules:
-   - HTTP (80) from `0.0.0.0/0`
+   - HTTP (80) from `0.0.0.0/0` (for HTTP → HTTPS redirect)
    - HTTPS (443) from `0.0.0.0/0`
 5. Outbound: All traffic (default)
-
-### tinyurl-ec2 (Application server)
-
-1. Name: `tinyurl-ec2`, VPC: `tinyurl-prod-vpc`
-2. Description: `Application server, accepts traffic from ALB only`
-3. Inbound rules:
-   - HTTP (80) from source: `tinyurl-alb` (not `0.0.0.0/0` — only ALB can reach EC2)
-4. Outbound: All traffic (default)
 
 > No port 22. SSH is not used. EC2 access is via SSM Session Manager only.
 
@@ -317,45 +308,7 @@ mkdir -p /app
 
 ---
 
-## Step 8 — ALB + Target Group
-
-### 8a. Create target group
-
-1. Go to **EC2 → Target Groups → Create target group**
-2. Target type: **Instances**
-3. Name: `tg-tinyurl-api`
-4. Protocol: HTTP, Port: 80
-5. VPC: `tinyurl-prod-vpc`
-6. Health check:
-   - Protocol: HTTP
-   - Path: `/actuator/health`
-   - Healthy threshold: 2
-   - Unhealthy threshold: 3
-   - Interval: 30s
-   - Timeout: 5s
-   - Success codes: 200
-7. Click **Next**, select your EC2 instance, click **Include as pending**, then **Create target group**
-
-### 8b. Create load balancer
-
-1. Go to **EC2 → Load Balancers → Create load balancer → Application Load Balancer**
-2. Name: `tinyurl-alb`
-3. Scheme: **Internet-facing**
-4. IP address type: IPv4
-5. VPC: `tinyurl-prod-vpc`
-6. Subnets: select both public subnets (`tinyurl-public-1a`, `tinyurl-public-1b`)
-7. Security groups: `tinyurl-alb`
-8. Listeners:
-   - Port 80: **Add listener** → Action: Redirect to HTTPS (443), status 301
-   - Port 443: **Add listener** → Action: Forward to `tg-tinyurl-api`
-   - For port 443, select ACM certificate: `*.buffden.com`
-9. Click **Create load balancer**
-
-> Copy the ALB **DNS name** (e.g. `tinyurl-alb-123456789.us-east-1.elb.amazonaws.com`). You'll need it for Route 53 in Step 11.
-
----
-
-## Step 9 — S3 Bucket
+## Step 8 — S3 Bucket
 
 1. Go to **S3 → Create bucket**
 2. Bucket name: `tinyurl-spa-prod`
@@ -372,7 +325,7 @@ mkdir -p /app
 
 ---
 
-## Step 10 — CloudFront Distribution
+## Step 9 — CloudFront Distribution
 
 1. Go to **CloudFront → Create distribution**
    - If a pricing plan popup appears, select **Pay-as-you-go** (no commitment, costs under $1/month for a portfolio project — AWS Shield Standard DDoS protection is included free regardless)
@@ -410,7 +363,7 @@ mkdir -p /app
 
 ---
 
-## Step 11 — Route 53 DNS Records
+## Step 10 — Route 53 DNS Records
 
 1. Go to **Route 53 → Hosted zones → buffden.com → Create record**
 
@@ -425,17 +378,15 @@ mkdir -p /app
 **Record 2 — API + redirects:**
 - Record name: `go`
 - Record type: **A**
-- Alias: **Yes**
-- Route traffic to: **Alias to Application and Classic Load Balancer**
-- Region: us-east-1
-- Select `tinyurl-alb`
+- Alias: **No**
+- Value: EC2 Elastic IP address (e.g. `100.56.217.158`)
 - Click **Create record**
 
 ---
 
-## Step 12 — Cloudflare DNS Migration
+## Step 11 — Cloudflare DNS Migration
 
-Moves DNS from Route 53 to Cloudflare so flood attacks are absorbed at Cloudflare's edge before CloudFront or ALB ever see the traffic — eliminating the billing impact of DDoS attacks. All AWS services stay completely unchanged.
+Moves DNS from Route 53 to Cloudflare so flood attacks are absorbed at Cloudflare's edge before CloudFront or EC2 ever see the traffic — eliminating the billing impact of DDoS attacks. All AWS services stay completely unchanged.
 
 ### 12a. Sign up and add domain
 
@@ -449,13 +400,13 @@ Cloudflare's auto-import is incomplete. Manually verify and correct all records:
 
 | Type | Name | Content | Proxy |
 | --- | --- | --- | --- |
-| CNAME | `go` | `dualstack.tinyurl-alb-xxx.us-east-1.elb.amazonaws.com` | Orange (Proxied) |
+| A | `go` | `<EC2 Elastic IP>` | Orange (Proxied) |
 | CNAME | `tinyurl` | `d1anlbbmfo4elu.cloudfront.net` | Orange (Proxied) |
 | A | `ems` | `<ems-public-ip>` | Orange (Proxied) |
 | CNAME | `portfolio` | `buffden.github.io` | Grey (DNS only) |
 | CNAME | `_2a3ec5a40d53220a744f6e248e46f22b` | `_bf955b229028da621bc467ed086b9ddc.jkddzztszm.acm-validations.aws` | Grey (DNS only) |
 
-> The `go` record is likely imported as two raw A records (IPs). Delete them and add a single CNAME pointing to the ALB hostname — ALB IPs change, the hostname does not.
+> The `go` record should be an A record pointing to the EC2 Elastic IP. The EIP does not change on stop/start.
 >
 > The ACM validation CNAME (`_2a3ec5a...`) **must be grey cloud (DNS only)**. If proxied, AWS cannot reach it to auto-renew your SSL certificate.
 
@@ -536,7 +487,7 @@ Once Cloudflare has been running without issues for 24 hours, delete the Route 5
 After all steps above, verify the network path is working:
 
 ```bash
-# Should return HTTP 502 (ALB up, no app running yet — expected)
+# Should return a TLS handshake or connection response (EC2 up, no app running yet — expected)
 curl -I https://go.buffden.com
 
 # Should return HTTP 301 redirect to https://

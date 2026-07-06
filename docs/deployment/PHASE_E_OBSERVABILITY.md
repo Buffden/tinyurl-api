@@ -73,25 +73,16 @@ db.t3.micro supports a maximum of ~87 connections. Alert before it's full.
 4. Action: Use SNS topic `tinyurl-alerts`
 5. Alarm name: `tinyurl-rds-high-connections`
 
-### Alarm 3 — ALB 5xx Errors
+### Alarm 3 — App 5xx Errors
 
-Triggers if Spring Boot is returning server errors at scale.
+Triggers if Spring Boot is returning server errors. Uses a CloudWatch Metric Filter on the app log stream.
 
-1. Metric: **ApplicationELB → Per AppELB Metrics → HTTPCode_Target_5XX_Count** → select `tinyurl-alb`
-2. Statistic: Sum, Period: 1 minute
-3. Condition: **Greater than 5**
-4. Action: Use SNS topic `tinyurl-alerts`
-5. Alarm name: `tinyurl-alb-5xx`
-
-### Alarm 4 — ALB Slow Responses
-
-Triggers if the application is responding slowly (DB bottleneck, connection pool exhaustion).
-
-1. Metric: **ApplicationELB → Per AppELB Metrics → TargetResponseTime** → select `tinyurl-alb`
-2. Statistic: p99 (99th percentile), Period: 5 minutes
-3. Condition: **Greater than 1** (1 second)
-4. Action: Use SNS topic `tinyurl-alerts`
-5. Alarm name: `tinyurl-alb-slow-p99`
+1. Go to **CloudWatch → Log groups → /tinyurl/prod → app → Metric filters → Create metric filter**
+2. Filter pattern: `{ $.status_class = "5xx" }`
+3. Metric name: `App5xxCount`, Namespace: `TinyURL`, Value: `1`
+4. Create alarm on this metric: Sum > 5 over 1 minute
+5. Action: Use SNS topic `tinyurl-alerts`
+6. Alarm name: `tinyurl-app-5xx`
 
 ### Confirm SNS email subscription
 
@@ -133,8 +124,7 @@ Access via **RDS → Databases → tinyurl-prod → Performance Insights tab**.
 |---|---|---|---|
 | EC2 CPU | <30% | >80% sustained | App under load or runaway process |
 | RDS connections | <20 | >75 | HikariCP pool exhausted |
-| ALB 5xx count | 0 | >5/min | Spring Boot throwing unhandled exceptions |
-| ALB P99 latency | <100ms | >1s | DB slow query or connection pool wait |
+| App 5xx count | 0 | >5/min | Spring Boot throwing unhandled exceptions |
 | Redirect success rate | 100% | — | Monitor manually via logs for now |
 
 ---

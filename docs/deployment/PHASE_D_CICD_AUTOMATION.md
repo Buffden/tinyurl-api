@@ -328,7 +328,7 @@ Make a small, safe change and merge it:
 Verify:
 1. GitHub Actions tab → `Deploy API` workflow runs
 2. All three jobs complete: `build-test` → `compose-smoke` → `deploy`
-3. ALB health check stays green during deploy
+3. App health check stays green during deploy
 4. `curl https://go.buffden.com/actuator/health` still returns 200 after deploy
 
 ---

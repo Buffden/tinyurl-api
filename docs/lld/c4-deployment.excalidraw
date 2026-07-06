@@ -2284,7 +2284,7 @@
       "updated": 1773376724343,
       "link": null,
       "locked": false,
-      "text": "<<AWS managed service>>\nAWS ALB\ngo.buffden.com\nHTTP -> HTTPS redirect\nForwards HTTPS to Nginx :443",
+      "text": "<<EC2 container>>\nNginx\ngo.buffden.com\nTLS :443 (Let's Encrypt)\nHTTP->HTTPS redirect",
       "fontSize": 12,
       "fontFamily": 5,
       "textAlign": "center",

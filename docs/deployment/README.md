@@ -1,7 +1,7 @@
 # TinyURL v1 — Deployment Overview
 
 **Frontend:** `tinyurl.buffden.com` → S3 + CloudFront (Angular SPA)
-**Backend + Redirects:** `go.buffden.com` → ALB → EC2 → Spring Boot
+**Backend + Redirects:** `go.buffden.com` → EC2 → Spring Boot
 **Short URL format:** `https://go.buffden.com/{code}`
 **Region:** `us-east-1` (N. Virginia)
 **Estimated cost:** ~$54/month
@@ -28,28 +28,23 @@
                     │         Cloudflare (DNS + Proxy)             │
                     │  buffden.com nameservers                     │
                     │  tinyurl.buffden.com  →  CloudFront (proxied)│
-                    │  go.buffden.com       →  ALB (proxied)       │
+                    │  go.buffden.com       →  EC2 EIP (proxied)   │
                     └──────────┬──────────────────────┬───────────┘
                                │                      │
-               ┌───────────────▼──────┐   ┌───────────▼──────────────┐
-               │   CloudFront CDN     │   │  Application Load        │
-               │   tinyurl.buffden.com│   │  Balancer (ALB)          │
-               │   Origin: S3 bucket  │   │  go.buffden.com          │
-               │   PriceClass_100     │   │  :443 → EC2:80           │
-               │   HTTPS only         │   │  :80  → redirect to 443  │
-               └──────────────────────┘   └───────────┬──────────────┘
-                         │                            │
-               ┌──────────▼──────────┐   ┌────────────▼──────────────────┐
-               │   S3 Bucket         │   │   EC2 t3.small (us-east-1a)   │
-               │   tinyurl-spa-prod  │   │   Ubuntu 22.04 LTS            │
-               │   Block public      │   │   Nginx + Spring Boot         │
-               │   access (OAC)      │   │   (Docker Compose)            │
-               └─────────────────────┘   └────────────┬──────────────────┘
-                                                       │
-                                         ┌─────────────▼─────────────────┐
-                                         │   RDS PostgreSQL 16           │
-                                         │   db.t3.micro, private subnet │
-                                         └───────────────────────────────┘
+               ┌───────────────▼──────┐   ┌───────────▼──────────────────────┐
+               │   CloudFront CDN     │   │   EC2 t3.small (us-east-1a)      │
+               │   tinyurl.buffden.com│   │   Ubuntu 22.04 LTS               │
+               │   Origin: S3 bucket  │   │   Nginx (TLS :443) + Spring Boot │
+               │   PriceClass_100     │   │   (Docker Compose)               │
+               │   HTTPS only         │   └────────────┬─────────────────────┘
+               └──────────────────────┘                │
+                         │                ┌────────────▼─────────────────────┐
+               ┌──────────▼──────────┐   │   RDS PostgreSQL 16              │
+               │   S3 Bucket         │   │   db.t3.micro, private subnet    │
+               │   tinyurl-spa-prod  │   └──────────────────────────────────┘
+               │   Block public      │
+               │   access (OAC)      │
+               └─────────────────────┘
 ```
 
 ## Traffic Flows
@@ -58,8 +53,8 @@
 |---|---|
 | `https://tinyurl.buffden.com` | Cloudflare → CloudFront → S3 (Angular SPA) |
 | `https://tinyurl.buffden.com/*` | CloudFront → S3 → `index.html` (Angular router) |
-| `POST https://go.buffden.com/api/urls` | Cloudflare → ALB → Nginx → Spring Boot → RDS |
-| `GET https://go.buffden.com/{code}` | Cloudflare → ALB → Nginx → Spring Boot → 301/302 |
+| `POST https://go.buffden.com/api/urls` | Cloudflare → Nginx → Spring Boot → RDS |
+| `GET https://go.buffden.com/{code}` | Cloudflare → Nginx → Spring Boot → 301/302 |
 | `http://` any domain | Redirect to `https://` |
 
 ---
@@ -69,7 +64,7 @@
 | Decision | Value |
 |---|---|
 | Frontend | S3 + CloudFront at `tinyurl.buffden.com` |
-| Backend | ALB → EC2 at `go.buffden.com` |
+| Backend | EC2 (Nginx) at `go.buffden.com` |
 | Short URL format | `https://go.buffden.com/{code}` |
 | API called by Angular | `https://go.buffden.com/api` |
 | DNS | Cloudflare (nameservers set at Namecheap) |
@@ -92,13 +87,12 @@
 |---|---|---|
 | EC2 t3.small | 2 vCPU, 2 GB | ~$15 |
 | RDS db.t3.micro | PostgreSQL 16, 5 GB | ~$15 |
-| ALB | 1 load balancer | ~$18 |
 | S3 | <100 MB assets | <$1 |
 | CloudFront (SPA) | Low traffic | ~$1 |
 | Cloudflare | DNS + proxy (free plan) | $0 |
 | CloudWatch | Alarms + logs | ~$3 |
 | ACM / SSM | Free tiers | $0 |
-| **Total** | | **~$54/month** |
+| **Total** | | **~$36/month** |
 
 ---
 

@@ -35,10 +35,6 @@ package "Public Internet" #LightGray {
 ' ---------------- AWS REGION ----------------
 package "AWS Region (Single Region)" #LightBlue {
 
-    package "Entry Layer" #LightGreen {
-        [Load Balancer\n(L4 / L7)] as LB
-    }
-
     package "Application Tier" #LightYellow {
         [Nginx\n(TLS Termination + Reverse Proxy)] as NGINX
         [URL Shortener App\n(Stateless Instances + Token Bucket RL)] as APP
@@ -71,8 +67,7 @@ User --> DNS : Resolve \n domain
 
 ' ---------------- READ PATH (blue) ----------------
 
-User -[#4C9BE8]-> LB : [READ] GET /{code}
-LB -[#4C9BE8]-> NGINX
+User -[#4C9BE8]-> NGINX : [READ] GET /{code}
 NGINX -[#4C9BE8]-> APP
 APP -[#4C9BE8]-> REDIS : Lookup short_code
 REDIS -[#4C9BE8]-> APP : Cache hit\nor NULL (negative cache)
@@ -83,8 +78,7 @@ APP -[#4C9BE8]-> User : HTTP 301/302 Redirect\nor HTTP 404 Not Found
 
 ' ---------------- WRITE PATH (red) ----------------
 
-User -[#FF0000]-> LB : [WRITE] POST /shorten
-LB -[#FF0000]-> NGINX
+User -[#FF0000]-> NGINX : [WRITE] POST /shorten
 NGINX -[#FF0000]-> APP
 APP -[#FF0000]-> DB : INSERT mapping
 DB -[#FF0000]-> APP : Confirm write
