@@ -65,6 +65,15 @@ class UrlServiceImplTest {
     }
 
     @Test
+    void shortenUrlShouldRejectUrlWithCredentials() {
+        IllegalArgumentException ex = assertThrows(
+            IllegalArgumentException.class,
+            () -> service.shortenUrl(new CreateUrlRequest("https://user:pass@example.com", 30), null, null, null)
+        );
+        assertEquals("INVALID_URL", ex.getMessage());
+    }
+
+    @Test
     void shortenUrlShouldRejectZeroExpiry() {
         IllegalArgumentException ex = assertThrows(
             IllegalArgumentException.class,

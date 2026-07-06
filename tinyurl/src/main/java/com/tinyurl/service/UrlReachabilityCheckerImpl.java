@@ -1,13 +1,15 @@
 package com.tinyurl.service;
 
 import com.tinyurl.exception.UrlUnreachableException;
-import java.io.IOException;
+import java.net.ConnectException;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,28 +19,67 @@ import org.springframework.stereotype.Service;
 public class UrlReachabilityCheckerImpl implements UrlReachabilityChecker {
 
     private static final Logger log = LoggerFactory.getLogger(UrlReachabilityCheckerImpl.class);
+    private static final int MAX_REDIRECTS = 5;
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
+    private final HttpClient httpClient;
+
+    public UrlReachabilityCheckerImpl() {
+        this.httpClient = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+    }
+
+    // Package-private for testing
+    UrlReachabilityCheckerImpl(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
 
     @Override
     public void check(String url) {
         try {
-            guardSsrf(url);
-            int status = sendHead(url);
+            int status = sendFollowingRedirects(url, "HEAD");
             if (status == 405) {
-                status = sendGet(url);
+                status = sendFollowingRedirects(url, "GET");
             }
-            if (status == 404 || status == 410) {
+            if (!isAcceptableStatus(status)) {
                 throw new UrlUnreachableException("URL_UNREACHABLE");
             }
         } catch (UrlUnreachableException e) {
             throw e;
+        } catch (UnknownHostException | ConnectException | HttpTimeoutException e) {
+            throw new UrlUnreachableException("URL_UNREACHABLE");
         } catch (Exception e) {
             log.warn("Reachability check failed for host {} — failing open: {}", URI.create(url).getHost(), e.getMessage());
         }
+    }
+
+    private int sendFollowingRedirects(String url, String method) throws Exception {
+        for (int i = 0; i <= MAX_REDIRECTS; i++) {
+            guardSsrf(url);
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(5));
+            if ("HEAD".equals(method)) {
+                builder.method("HEAD", HttpRequest.BodyPublishers.noBody());
+            } else {
+                builder.GET();
+            }
+            HttpResponse<Void> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.discarding());
+            int status = response.statusCode();
+            if (status >= 300 && status < 400) {
+                String location = response.headers().firstValue("location").orElse(null);
+                if (location != null) {
+                    url = URI.create(url).resolve(location).toString();
+                    continue;
+                }
+            }
+            return status;
+        }
+        throw new UrlUnreachableException("URL_UNREACHABLE");
+    }
+
+    private boolean isAcceptableStatus(int status) {
+        return status >= 200 && status < 300;
     }
 
     private void guardSsrf(String url) throws Exception {
@@ -47,6 +88,10 @@ public class UrlReachabilityCheckerImpl implements UrlReachabilityChecker {
             throw new UrlUnreachableException("URL_UNREACHABLE");
         }
         InetAddress address = InetAddress.getByName(host);
+        // Reject raw IP address literals (IPv4 like 1.2.3.4, IPv6 like ::1)
+        if (host.equals(address.getHostAddress())) {
+            throw new UrlUnreachableException("URL_UNREACHABLE");
+        }
         if (address.isLoopbackAddress()
                 || address.isSiteLocalAddress()
                 || address.isLinkLocalAddress()
@@ -62,21 +107,5 @@ public class UrlReachabilityCheckerImpl implements UrlReachabilityChecker {
         }
         // FC00::/7 — unique local addresses (covers FC00:: and FD00:: ranges)
         return (address.getAddress()[0] & 0xFE) == 0xFC;
-    }
-
-    private int sendHead(String url) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                .timeout(Duration.ofSeconds(5))
-                .build();
-        return httpClient.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
-    }
-
-    private int sendGet(String url) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                .GET()
-                .timeout(Duration.ofSeconds(5))
-                .build();
-        return httpClient.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
     }
 }
