@@ -55,7 +55,7 @@
 
 ## 4. CloudWatch Anomaly Alerting (4xx / 5xx Rate Spikes)
 
-**Why deferred:** CloudWatch alarms for infrastructure health exist (CPU, ALB 5xx). Application-level alerting on anomalous request patterns (sudden spike in 400s suggesting scanning, or 429s suggesting a rate-limit bypass attempt) requires a CloudWatch Metric Filter on the structured log stream and an alarm with a meaningful threshold.
+**Why deferred:** CloudWatch alarms for infrastructure health exist (CPU, EC2 5xx). Application-level alerting on anomalous request patterns (sudden spike in 400s suggesting scanning, or 429s suggesting a rate-limit bypass attempt) requires a CloudWatch Metric Filter on the structured log stream and an alarm with a meaningful threshold.
 
 **Why it matters in v2:** v1 has observability (structured logs, Prometheus metrics) but no automated paging when attack patterns emerge. Without this, an ongoing abuse incident may go unnoticed until it impacts latency or DB load.
 

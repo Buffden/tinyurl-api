@@ -20,10 +20,9 @@ The architecture is CloudFront-first at the edge, with backend services running 
 
 | Component | Responsibility |
 | --- | --- |
-| DNS (Cloudflare) | Resolves `go.buffden.com` → ALB (API/redirects); `tinyurl.buffden.com` → CloudFront (Angular SPA). Proxied — DDoS mitigation and WAF sit at the edge before traffic reaches AWS. |
-| AWS ALB | TLS termination, HTTP→HTTPS redirect, health checks, routes traffic to EC2 instances. |
+| DNS (Cloudflare) | Resolves `go.buffden.com` → EC2 EIP (API/redirects); `tinyurl.buffden.com` → CloudFront (Angular SPA). Proxied — DDoS mitigation and WAF sit at the edge before traffic reaches AWS. |
 | CloudFront (SPA dist) | Serves Angular SPA from S3 origin with CDN caching and SPA fallback rules. |
-| Nginx | Reverse proxy inside EC2 Docker Compose. Routes requests to the Spring Boot app. |
+| Nginx | TLS termination, HTTP→HTTPS redirect, reverse proxy inside EC2 Docker Compose. Routes requests to the Spring Boot app. |
 | Application Server | Stateless — any instance can handle any request. Horizontally scalable within the backend runtime boundary. |
 | PostgreSQL | Primary data store. Stores `short_code → original_url` mappings. Single primary. |
 
@@ -52,7 +51,7 @@ The architecture is CloudFront-first at the edge, with backend services running 
 ### Write Path (Create Short URL)
 
 1. Client sends `POST /api/urls` with original URL and optional expiry.
-2. Request passes through Cloudflare → ALB → Nginx → App.
+2. Request passes through Cloudflare → Nginx → App.
 3. App validates input (URL format, length).
 4. App generates `short_code` via DB sequence + Base62 encoding.
 5. App writes mapping to PostgreSQL.
@@ -62,7 +61,7 @@ The architecture is CloudFront-first at the edge, with backend services running 
 ### Read Path (Redirect)
 
 1. Client accesses `GET /<short_code>` at `go.buffden.com`.
-2. Request passes through Cloudflare → ALB → Nginx → App.
+2. Request passes through Cloudflare → Nginx → App.
 3. (v2) App checks Redis cache first.
 4. On cache miss: App queries PostgreSQL by `short_code`.
 5. App checks expiry and deletion status.

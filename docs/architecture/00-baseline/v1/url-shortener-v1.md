@@ -96,8 +96,7 @@ Reason: keep v1 small, shippable, and focused on redirect correctness + low late
 ## 6) Minimum Components (What Must Exist)
 
 - Client (browser).
-- DNS resolution (`go.buffden.com` → ALB for API/redirects; `tinyurl.buffden.com` → CloudFront for Angular SPA).
-- AWS Application Load Balancer (ALB) — TLS termination, health checks, HTTP→HTTPS redirect.
+- DNS resolution (`go.buffden.com` → EC2 for API/redirects; `tinyurl.buffden.com` → CloudFront for Angular SPA).
 - Nginx (TLS termination + reverse proxy).
 - Stateless application servers (redirect + create logic).
 - Storage system (SQL) for `short_code → original_url` mapping.
@@ -108,7 +107,7 @@ At 5K QPS peak, horizontal scaling is expected at the application layer.
 ### Read Path (Redirect) — v1
 
 1. Client sends `GET /{short_code}`.
-2. Load balancer routes to an app instance via Nginx.
+2. Nginx routes to an app instance.
 3. App looks up `short_code` in the primary DB.
 4. If found and not expired → app returns HTTP 301/302 with `Location: original_url`.
 5. If not found or expired → app returns 404/410.
@@ -116,7 +115,7 @@ At 5K QPS peak, horizontal scaling is expected at the application layer.
 ### Write Path (Create) — v1
 
 1. Client sends `POST /api/urls` with original URL and optional expiry.
-2. Load balancer routes to an app instance via Nginx.
+2. Nginx routes to an app instance.
 3. App validates input and generates `short_code` (DB-backed sequence + Base62).
 4. App writes mapping to the primary DB.
 5. App returns the short URL to the client.
@@ -196,7 +195,7 @@ Reason:
 
 - Read-heavy workload (80/20).
 - Redirect path is stateless (lookup + redirect).
-- App instances can scale independently behind the load balancer.
+- App instances can scale independently behind Nginx.
 - DB starts as a single primary (vertical scaling + tuning); introduce read replicas later if needed.
 
 Avoid premature sharding at this stage.
@@ -209,8 +208,7 @@ Avoid premature sharding at this stage.
 | ------------- | ------------------- | ---------------------- | ---------- |
 | DB            | Slow query / lock    | Redirect latency spike | Proper indexing, query tuning, connection pool limits |
 | DB            | Down                | All redirects fail     | Automated backups, failover plan (single-region), clear 503 response |
-| App           | Crash               | Partial 5xx errors     | Multiple instances behind LB, health checks |
-| Load Balancer | Misroute / unhealthy | Partial outage         | Health checks + autoscaling policies |
+| App           | Crash               | Partial 5xx errors     | Multiple instances, health checks |
 | DNS           | Resolution failure  | Full outage            | Correct records + sensible TTL; rely on resolver caching |
 | Nginx/TLS     | Cert expired        | Full outage (HTTPS)    | Automated certificate renewal (Let’s Encrypt) + monitoring |
 | Cache (if any)| Miss storm          | DB overload            | (v2) cache-aside + TTL + stampede protection |

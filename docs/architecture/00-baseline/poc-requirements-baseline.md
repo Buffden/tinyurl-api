@@ -80,7 +80,7 @@ Version 1:
 
 - Client (browser).
 - DNS Resolution.
-- Load balancer (L4 or L7).
+- Nginx (TLS termination + reverse proxy).
 - Stateless application servers.
 - Storage system (short -> original mapping) SQL.
 - Optional in-memory cache for hot keys.
@@ -153,7 +153,7 @@ Reason:
 
 - Read-heavy workload (80/20).
 - Stateless redirect logic.
-- App instances can scale independently behind load balancer.
+- App instances can scale independently behind Nginx.
 - DB initially vertically scaled, later read-replicated if needed.
 
 Avoid premature sharding at this stage.
@@ -166,8 +166,7 @@ Avoid premature sharding at this stage.
 | ------------- | ------------------ | ---------------------- | ---------------------------- |
 | DB            | Slow query         | Redirect latency spike | Proper indexing              |
 | DB            | Down               | All redirects fail     | Replication + failover       |
-| App           | Crash              | Partial 5xx errors     | Multiple instances behind LB |
-| Load Balancer | Misroute           | Partial outage         | Health checks                |
+| App           | Crash              | Partial 5xx errors     | Multiple instances, health checks |
 | DNS           | Resolution failure | Full outage            | DNS caching + low TTL        |
 | Cache         | Miss storm         | DB overload            | Rate limiting + TTL          |
 

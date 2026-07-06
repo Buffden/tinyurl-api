@@ -101,14 +101,14 @@ Version 2:
 
 ## 6) Architecture Overview
 
-Deployment: **AWS `us-east-1` (Single Region)**. API + redirects at `go.buffden.com` (ALB → EC2); Angular SPA at `tinyurl.buffden.com` (S3 + CloudFront).
+Deployment: **AWS `us-east-1` (Single Region)**. API + redirects at `go.buffden.com` (EC2); Angular SPA at `tinyurl.buffden.com` (S3 + CloudFront).
 
 ### Layers
 
 | Layer | Components |
 | --- | --- |
 | Public Internet | DNS — `go.buffden.com` (API/redirects) and `tinyurl.buffden.com` (SPA) |
-| Entry Layer | AWS ALB (`go.buffden.com`) + CloudFront (`tinyurl.buffden.com`) |
+| Edge | CloudFront (`tinyurl.buffden.com`) |
 | Application Tier | Nginx (TLS Termination + Reverse Proxy), URL Shortener App (Stateless Instances + Token Bucket RL) |
 | Cache Layer | Redis (Cache-Aside + Negative Caching) |
 | Data Tier | PostgreSQL Primary DB |
@@ -126,7 +126,6 @@ Starting from v1 components, v2 requires additional components because of scale 
 
 - Client (browser)
 - DNS resolution
-- Load balancer
 - Nginx (TLS termination + reverse proxy)
 - Stateless application servers
 - **Redis cache** (mandatory in v2 for redirect path)
@@ -140,8 +139,8 @@ Starting from v1 components, v2 requires additional components because of scale 
 ### Read Path (Redirect) — v2
 
 1. User resolves domain via DNS.
-2. Client sends `GET /{code}` to Load Balancer.
-3. LB forwards to Nginx; Nginx forwards to App.
+2. Client sends `GET /{code}` to Nginx.
+3. Nginx forwards to App.
 4. App looks up `short_code` in Redis.
 5. **Cache hit**: Redis returns `original_url` (or NULL for negative cache) → skip to step 8.
 6. **Cache miss**: App queries PostgreSQL (`Cache miss lookup`).
@@ -152,7 +151,7 @@ Starting from v1 components, v2 requires additional components because of scale 
 ### Write Path (Create) — v2
 
 1. Client sends `POST /api/urls` (with optional `alias` field for custom aliases) with URL and optional expiry.
-2. LB forwards to Nginx; Nginx applies rate limits and forwards to App.
+2. Nginx applies rate limits and forwards to App.
 3. App validates input, checks alias rules, and generates `short_code` if needed.
 4. App writes mapping to PostgreSQL (`INSERT mapping`).
 5. PostgreSQL confirms write to App.
@@ -280,7 +279,7 @@ Reason:
 | DB | Slow queries | Tail latency spike | Indexing, connection pool limits, query tuning |
 | DB | Down | Redirects fail | Backups + failover plan; return 503 with retry headers |
 | App | Thread exhaustion | Timeouts/5xx | Autoscale app, set timeouts, bulkheads |
-| LB/Nginx | Misconfig | Partial/full outage | Health checks, config validation in CI |
+| Nginx | Misconfig | Partial/full outage | Health checks, config validation in CI |
 | Rate limiter | Too strict | False throttling | Observe metrics, adjust thresholds, allowlists |
 | Cache stampede | Many expirations at once | DB spike | TTL jitter + request coalescing for same key |
 

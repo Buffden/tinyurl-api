@@ -11,10 +11,9 @@
 - [ ] Step 1 — Build and push Docker image to GHCR
 - [ ] Step 2 — Copy files to EC2 via SSM
 - [ ] Step 3 — Start application on EC2
-- [ ] Step 4 — Verify ALB health check
-- [ ] Step 5 — Build and upload Angular to S3
-- [ ] Step 6 — Invalidate CloudFront cache
-- [ ] Step 7 — Full end-to-end smoke test
+- [ ] Step 4 — Build and upload Angular to S3
+- [ ] Step 5 — Invalidate CloudFront cache
+- [ ] Step 6 — Full end-to-end smoke test
 
 ---
 
@@ -171,48 +170,7 @@ If you see SSM Parameter Store errors, check:
 
 ---
 
-## Step 4 — Verify ALB Health Check
-
-1. Go to **EC2 → Target Groups → tg-tinyurl-api**
-2. Click **Targets** tab
-3. Wait for the registered EC2 to show **Healthy** status (can take up to 60s)
-
-If it stays **Unhealthy:**
-
-- Use SSM Session Manager to check: `curl http://localhost/actuator/health`
-  - If this returns `{"status":"UP"}` the app is fine — the issue is between Nginx and the health check path
-  - If this returns 403, Nginx is blocking `/actuator/health` (see fix below)
-  - If connection refused, the app hasn't started — check `docker compose -f docker-compose.prod.yml logs app`
-- Confirm Nginx is running: `docker compose -f docker-compose.prod.yml ps`
-- Confirm security group `sg-ec2` allows port 80 from `sg-alb`
-
-**Critical: ALB targets port 80 on EC2, which goes through Nginx — not directly to the app.**
-
-If Nginx has a blanket `location /actuator/ { return 403; }` block, health checks will return 403 and the target will stay Unhealthy. The fix is an exact-match location *before* the blanket block in `nginx.prod.conf`:
-
-```nginx
-# Allow ALB health checks through — MUST be before the blanket /actuator/ block
-location = /actuator/health {
-    proxy_pass http://app:8080;
-    proxy_set_header Host $host;
-}
-
-# Block all other actuator endpoints
-location /actuator/ {
-    return 403;
-}
-```
-
-After updating the nginx config, re-upload via S3 and restart the nginx container:
-
-```bash
-aws s3 cp s3://tinyurl-spa-prod/deploy/nginx.prod.conf /app/infra/nginx/nginx.prod.conf
-docker compose -f docker-compose.prod.yml restart nginx
-```
-
----
-
-## Step 5 — Build and Upload Angular to S3
+## Step 4 — Build and Upload Angular to S3
 
 Run on your local machine from the `tinyurl-gui` repo:
 
@@ -261,7 +219,7 @@ Without the `BootstrapContext` parameter, Angular's server platform cannot initi
 
 ---
 
-## Step 6 — Invalidate CloudFront Cache
+## Step 5 — Invalidate CloudFront Cache
 
 ```bash
 # Get your distribution ID
@@ -281,7 +239,7 @@ aws cloudfront list-invalidations --distribution-id <your-dist-id>
 
 ---
 
-## Step 7 — Full End-to-End Smoke Test
+## Step 6 — Full End-to-End Smoke Test
 
 Run these checks in order:
 
@@ -326,7 +284,6 @@ curl -I https://tinyurl.buffden.com
 | `aws s3 cp` returns 403 Forbidden | EC2 role missing S3 permissions | Attach `AmazonS3ReadOnlyAccess` to `role-tinyurl-ec2` |
 | CloudWatch `AccessDeniedException` in Docker logs | EC2 role missing CloudWatch permissions | Attach `CloudWatchLogsFullAccess` to `role-tinyurl-ec2` |
 | App crash: `Could not resolve placeholder 'tinyurl.cors.allowed-origins'` | CORS config uses YAML list syntax; `@Value` requires a string | Change `allowed-origins` to comma-separated string in `application-prod.yaml` |
-| ALB health check stays Unhealthy with 403 | Nginx blocks `/actuator/` before ALB can reach app | Add `location = /actuator/health` exact-match block before the blanket `location /actuator/` block in nginx config |
 | `ng build` fails with NG0401 | `main.server.ts` missing `BootstrapContext` parameter (Angular 19.2+) | Update bootstrap function signature — see Step 5 |
 | CORS error in browser | `CorsConfig.java` not applied | Verify `application-prod.yaml` has correct origin as comma-separated string |
 | Short URL has wrong domain | Wrong SSM `base-url` | Update `/tinyurl/prod/base-url` → `https://go.buffden.com` |

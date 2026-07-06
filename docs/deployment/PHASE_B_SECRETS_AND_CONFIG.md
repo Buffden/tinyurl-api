@@ -205,7 +205,7 @@ http {
         add_header X-Content-Type-Options "nosniff" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-        # Allow ALB health checks — MUST be before the blanket /actuator/ block
+        # Expose health check endpoint for monitoring — MUST be before the blanket /actuator/ block
         location = /actuator/health {
             proxy_pass http://app:8080;
             proxy_set_header Host $host;
@@ -238,7 +238,7 @@ http {
 }
 ```
 
-> `HSTS` (`Strict-Transport-Security`) header is intentionally omitted here — the ALB handles HTTPS enforcement. Adding HSTS at the Nginx level (HTTP only internally) would have no effect and could cause confusion.
+> `HSTS` (`Strict-Transport-Security`) is handled by Cloudflare's **Always Use HTTPS** setting and the HTTP→HTTPS redirect in the Nginx HTTPS server block.
 
 ---
 
@@ -323,13 +323,10 @@ grep apiUrl src/environments/environment.prod.ts
 Browser
   │
   ▼
-Route 53 (go.buffden.com)
+Cloudflare DNS (go.buffden.com → EC2 EIP)
   │
   ▼
-ALB (HTTPS:443 → HTTP:80 to EC2)
-  │
-  ▼
-Nginx container (port 80)
+Nginx container (port 443, TLS via Let's Encrypt)
   ├── rate limits POST /api/urls
   ├── blocks /actuator/
   └── proxies everything else

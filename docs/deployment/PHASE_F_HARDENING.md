@@ -9,13 +9,12 @@
 ## Checklist
 
 - [ ] Step 1 — Verify Nginx security headers
-- [ ] Step 2 — Enable ALB access logs
-- [ ] Step 3 — Enable AWS CloudTrail
-- [ ] Step 4 — Enable EC2 termination protection
-- [ ] Step 5 — Verify RDS deletion protection
-- [ ] Step 6 — Take manual RDS snapshot
-- [ ] Step 7 — Test rollback procedure
-- [ ] Step 8 — Go-live verification checklist
+- [ ] Step 2 — Enable AWS CloudTrail
+- [ ] Step 3 — Enable EC2 termination protection
+- [ ] Step 4 — Verify RDS deletion protection
+- [ ] Step 5 — Take manual RDS snapshot
+- [ ] Step 6 — Test rollback procedure
+- [ ] Step 7 — Go-live verification checklist
 
 ---
 
@@ -42,37 +41,7 @@ docker compose -f /app/docker-compose.prod.yml exec nginx nginx -T | grep add_he
 
 ---
 
-## Step 2 — Enable ALB Access Logs
-
-ALB access logs record every request — useful for debugging and security audits.
-
-1. Create an S3 bucket for logs: `tinyurl-alb-logs-prod` (in us-east-1)
-2. Add S3 bucket policy to allow ALB to write (AWS requires this):
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Principal": {
-           "AWS": "arn:aws:iam::127311923021:root"
-         },
-         "Action": "s3:PutObject",
-         "Resource": "arn:aws:s3:::tinyurl-alb-logs-prod/alb/*"
-       }
-     ]
-   }
-   ```
-   > `127311923021` is the AWS ELB service account for us-east-1 — this is correct, not a mistake.
-
-3. Go to **EC2 → Load Balancers → tinyurl-alb → Attributes → Edit**
-4. Access logs: **Enable**
-5. S3 URI: `s3://tinyurl-alb-logs-prod/alb`
-6. Save
-
----
-
-## Step 3 — Enable AWS CloudTrail
+## Step 2 — Enable AWS CloudTrail
 
 CloudTrail records all AWS API calls — who did what, when.
 
@@ -88,7 +57,7 @@ CloudTrail records all AWS API calls — who did what, when.
 
 ---
 
-## Step 4 — EC2 Termination Protection
+## Step 3 — EC2 Termination Protection
 
 Prevents accidentally terminating the EC2 instance from the console or CLI.
 
@@ -101,7 +70,7 @@ Prevents accidentally terminating the EC2 instance from the console or CLI.
 
 ---
 
-## Step 5 — Verify RDS Deletion Protection
+## Step 4 — Verify RDS Deletion Protection
 
 Was enabled during Phase A. Verify:
 
@@ -113,7 +82,7 @@ If not enabled:
 
 ---
 
-## Step 6 — Manual RDS Snapshot Before Go-Live
+## Step 5 — Manual RDS Snapshot Before Go-Live
 
 Take a manual snapshot as a safety baseline before going live.
 
@@ -126,7 +95,7 @@ Take a manual snapshot as a safety baseline before going live.
 
 ---
 
-## Step 7 — Rollback Procedures
+## Step 6 — Rollback Procedures
 
 Test these **before** going live so you know they work.
 
@@ -178,7 +147,7 @@ docker compose -f /app/docker-compose.prod.yml restart app
 
 ---
 
-## Step 8 — Go-Live Verification Checklist
+## Step 7 — Go-Live Verification Checklist
 
 Run this full checklist before announcing the app publicly.
 
@@ -200,7 +169,6 @@ Run this full checklist before announcing the app publicly.
 - [ ] Copy-to-clipboard works
 
 **Infrastructure:**
-- [ ] ALB target group health check: **Healthy**
 - [ ] RDS status: **Available**
 - [ ] CloudWatch alarms: all in **OK** state
 - [ ] CloudWatch logs: `/tinyurl/prod/app` receiving logs
