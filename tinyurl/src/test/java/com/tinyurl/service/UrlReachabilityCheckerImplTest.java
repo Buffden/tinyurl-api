@@ -13,6 +13,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import javax.net.ssl.SSLException;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,6 +103,12 @@ class UrlReachabilityCheckerImplTest {
     @Test
     void shouldRejectOnConnectionRefused() throws Exception {
         doThrow(new ConnectException("refused")).when(httpClient).send(any(), any());
+        assertThrows(UrlUnreachableException.class, () -> checker.check("https://example.com"));
+    }
+
+    @Test
+    void shouldRejectOnSslError() throws Exception {
+        doThrow(new SSLException("certificate unknown")).when(httpClient).send(any(), any());
         assertThrows(UrlUnreachableException.class, () -> checker.check("https://example.com"));
     }
 

@@ -10,6 +10,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import javax.net.ssl.SSLException;
 import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ public class UrlReachabilityCheckerImpl implements UrlReachabilityChecker {
             }
         } catch (UrlUnreachableException e) {
             throw e;
-        } catch (UnknownHostException | ConnectException | HttpTimeoutException e) {
+        } catch (UnknownHostException | ConnectException | HttpTimeoutException | SSLException e) {
             throw new UrlUnreachableException("URL_UNREACHABLE");
         } catch (Exception e) {
             log.warn("Reachability check failed for host {} — failing open: {}", URI.create(url).getHost(), e.getMessage());
